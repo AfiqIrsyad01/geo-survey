@@ -1,66 +1,87 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# GeoSurvey System (GSS)
+### Corporate GIS Operational Intelligence Platform
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+GeoSurvey System (GSS) is a high-performance, industry-ready GIS platform designed to streamline field data collection, spatial validation, and corporate reporting. Built on the **SAD Flow** (System Analysis & Design) principle, GSS converts raw field inputs into actionable operational intelligence.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## 🚀 Key Features
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### 🗺️ GIS Framework & Spatial Validation
+- **High-Precision Mapping**: Integrated with **MapLibre GL JS** using robust **OpenFreeMap** styles for real-time coordinate picking.
+- **Smart Boundary Validation**: Leverages **Turf.js** for client-side **Point-in-Polygon** checks, ensuring field staff are within their assigned project zones before data submission.
+- **Project Zone Control**: Administrative ability to define geometric project boundaries in the database (MySQL Spatial Data).
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### 📸 Automated Evidence Intelligence
+- **GPS-Timestamp Watermarking**: Automatic burning of GPS coordinates (Lat/Long) and server-side timestamps onto survey images using the **Intervention Image** library.
+- **Immutable Log**: Ensures field evidence is authentic and verified against the reported spatial coordinates.
 
-## Learning Laravel
+### 📄 Professional Reporting System
+- **PDF Report Generation**: Converts survey details into professional, corporate-branded PDF reports via **DomPDF**.
+- **SAD Flow Output**: Generates structured summaries (Information) from raw site details (Data) for HOD and Stakeholder review.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### 🔐 Secure Multi-Role Ecosystem
+- **Role-Based Access Control (RBAC)**: Dedicated workflows for **Admin**, **HOD**, and **Staff**.
+- **Middleware Protection**: Custom `role` middleware ensuring granular security across the dashboard, projects, and survey management.
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+---
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 2000 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## 🛠️ Technology Stack
 
-## Laravel Sponsors
+| Layer | Technology |
+| :--- | :--- |
+| **Backend** | Laravel 10 (PHP 8.2+) |
+| **Frontend** | Vue.js 3, Inertia.js |
+| **Styling** | Tailwind CSS (Custom Geo-Navy Theme) |
+| **GIS / Mapping** | MapLibre GL JS, Turf.js |
+| **PDF Engine** | DomPDF |
+| **Image Processing** | Intervention Image (GD) |
+| **Database** | MySQL 8.0+ (Spatial Extensions) |
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
+---
 
-### Premium Partners
+## 📦 Installation & Setup
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[OP.GG](https://op.gg)**
-- **[WebReinvent](https://webreinvent.com/?utm_source=laravel&utm_medium=github&utm_campaign=patreon-sponsors)**
-- **[Lendio](https://lendio.com)**
+1. **Clone the repository**
+2. **Environment Configuration**:
+   ```bash
+   composer install
+   npm install
+   cp .env.example .env
+   php artisan key:generate
+   ```
+3. **Database Preparation**:
+   - Create a database named `geoservedb` in your MySQL environment.
+   - Configure `DB_DATABASE`, `DB_USERNAME`, and `DB_PASSWORD` in `.env`.
+4. **Migrations & Seeding**:
+   ```bash
+   php artisan migrate:fresh --seed
+   php artisan storage:link
+   ```
+5. **Run Development Servers**:
+   ```bash
+   php artisan serve
+   # In a separate terminal
+   npm run dev
+   ```
 
-## Contributing
+---
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## 🔑 Authorized Access (Seeded)
 
-## Code of Conduct
+| Role | Email | Password |
+| :--- | :--- | :--- |
+| **Global Admin** | `admin@geosurvey.com` | `password` |
+| **HOD (Reviewer)** | `hod@geosurvey.com` | `password` |
+| **Field Staff** | `staff@geosurvey.com` | `password` |
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+---
 
-## Security Vulnerabilities
+## 🏛️ Design System (Geo-Theme)
+GSS uses a custom corporate aesthetic defined in `tailwind.config.js`:
+- **Geo-Navy** (`#0a192f`): Primary professional background.
+- **Geo-Teal** (`#64ffda`): Highlight and GIS validation indicators.
+- **Geo-Slate** (`#8892b0`): Detailed meta-data and descriptions.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+---
+**Build on Excellence. Powered by GSS Intelligence.**
