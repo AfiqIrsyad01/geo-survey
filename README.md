@@ -4,8 +4,8 @@ This document tracks the development progress and future roadmap of the GeoSurve
 
 ##  Phase 1: Core GIS Infrastructure
 - [x] **Project Boundary Management**: Database support for spatial project zones and boundaries.
-- [ ] **High-Precision Mapping**: Integration with MapLibre GL JS and OpenFreeMap for coordinate selection.
-- [ ] **Client-Side Spatial Validation**: Implementation of Turf.js for real-time Point-in-Polygon validation.
+- [x] **High-Precision Mapping**: Integration with MapLibre GL JS and OpenFreeMap for coordinate selection.
+- [x] **Client-Side Spatial Validation**: Implementation of Turf.js for real-time Point-in-Polygon validation.
 
 ##  Phase 2: Multi-Role Workflow & Ecosystem
 - [ ] **Role-Based Access Control (RBAC)**: Distinct interfaces and permissions for **Admin**, **HOD**, and **Field Staff**.
