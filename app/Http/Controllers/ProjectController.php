@@ -46,7 +46,9 @@ class ProjectController extends Controller
                 // Ensure it's a valid GeoJSON string
                 $boundary = $request->boundary;
                 
-                DB::statement("UPDATE projects SET boundary = ST_GeomFromGeoJSON(?) WHERE id = ?", [
+                // Level 3: Server-side Geometry Optimization (Simplification)
+                // ST_Simplify ensures the geometry stays clean and fast for rendering
+                DB::statement("UPDATE projects SET boundary = ST_Simplify(ST_GeomFromGeoJSON(?), 0.00001) WHERE id = ?", [
                     $boundary,
                     $project->id
                 ]);
