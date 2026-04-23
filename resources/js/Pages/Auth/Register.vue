@@ -219,7 +219,7 @@ const stats = computed(() => {
                 <!-- User Table -->
                 <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
                     <div class="p-6 border-b border-gray-50 flex justify-between items-center">
-                        <h3 class="font-bold text-geo-navy">Operational FleetRegistry</h3>
+                        <h3 class="font-bold text-geo-navy">Operational UserRegistry</h3>
                         <div class="flex gap-2">
                              <div class="px-3 py-1 bg-green-50 text-green-700 text-[10px] font-black uppercase rounded-full border border-green-100">Live Connection</div>
                         </div>

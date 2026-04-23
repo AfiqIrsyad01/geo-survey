@@ -55,6 +55,10 @@ onBeforeMount(() => {
                                     <i class="fa-solid fa-users-gear text-amber-500"></i>
                                     Manage Personnel
                                 </NavLink>
+                                <NavLink v-if="$page.props.auth.user.role === 'admin'" :href="route('admin.reports')" :active="route().current('admin.reports')" class="flex items-center gap-2">
+                                    <i class="fa-solid fa-file-invoice-dollar text-emerald-500"></i>
+                                    Corporate Reports
+                                </NavLink>
                             </div>
                         </div>
 
@@ -123,6 +127,9 @@ onBeforeMount(() => {
                         </ResponsiveNavLink>
                         <ResponsiveNavLink v-if="$page.props.auth.user.role === 'admin'" :href="route('register')" :active="route().current('register')">
                             <i class="fa-solid fa-users-gear me-2"></i> Manage Personnel
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink v-if="$page.props.auth.user.role === 'admin'" :href="route('admin.reports')" :active="route().current('admin.reports')">
+                            <i class="fa-solid fa-file-invoice-dollar me-2"></i> Corporate Reports
                         </ResponsiveNavLink>
                     </div>
 
