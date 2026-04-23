@@ -13,17 +13,17 @@ This document tracks the development progress and future roadmap of the GeoSurve
 - [x] **HOD Approval Module**: Streamlined workflow for reviewing and approving field survey submissions.
 
 ##  Phase 3: Automated Evidence Intelligence
-- [x] **Survey Evidence Capture**: Secure multi-image upload functionality for field work.
-- [x] **High-Resolution Snapshots**: Built-in Map Snapshot engine (JPEG) for spatial record keeping.
-- [x] **Terrain Elevation (ASL)**: Real-time altitude data integration for survey points.
+- [ ] **Survey Evidence Capture**: Secure multi-image upload functionality for field work.
+- [ ] **High-Resolution Snapshots**: Built-in Map Snapshot engine (JPEG) for spatial record keeping.
+- [ ] **Terrain Elevation (ASL)**: Real-time altitude data integration for survey points.
 
 ##  Phase 4: Corporate Reporting System
-- [x] **Dynamic PDF Engine**: Automated generation of professional, corporate-branded reports via DomPDF.
-- [x] **Advanced Communication**: SMTP Background Queuing (MailHog/Gmail) for instant staff credentialing.
+- [ ] **Dynamic PDF Engine**: Automated generation of professional, corporate-branded reports via DomPDF.
+- [ ] **Advanced Communication**: SMTP Background Queuing (MailHog/Gmail) for instant staff credentialing.
 
 ##  Phase 5: Advanced GIS Hardening
-- [x] **3D Digital Twin Rendering**: 3D building extrusions and perspective map manipulation.
-- [x] **Site Intelligence (Landmarks)**: Real-time discovery of critical infrastructure via OSM Overpass API.
+- [ ] **3D Digital Twin Rendering**: 3D building extrusions and perspective map manipulation.
+- [ ] **Site Intelligence (Landmarks)**: Real-time discovery of critical infrastructure via OSM Overpass API.
 
 ##  Phase 6: Future Roadmap (Planned Enhancements)
 - [ ] **Real-time Workflow Notifications**: Alert system for new submissions and approvals.
