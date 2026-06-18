@@ -4,12 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Project extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
-    protected $fillable = ['name', 'description', 'boundary', 'user_id'];
+    protected $fillable = ['name', 'description', 'boundary', 'user_id', 'deadline_date', 'cost'];
 
     public function user()
     {
@@ -19,15 +20,7 @@ class Project extends Model
     /**
      * The attributes that should be hidden for arrays.
      */
-    protected $hidden = ['boundary_raw'];
-
-    /**
-     * Automatically convert binary boundary to GeoJSON for the frontend.
-     */
-    protected function getBoundaryAttribute($value)
-    {
-        return json_decode($value);
-    }
+    protected $hidden = ['boundary', 'boundary_raw'];
 
     public function surveys()
     {

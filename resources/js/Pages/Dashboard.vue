@@ -1,8 +1,9 @@
 <script setup>
-import { computed, onMounted } from 'vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
+import { Head, Link, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MapViewer from '@/Components/MapViewer.vue';
+import * as turf from '@turf/turf';
 
 const props = defineProps({
     stats: { type: Object, default: () => ({}) },
@@ -14,20 +15,31 @@ const props = defineProps({
     unread_notifications: { type: Array, default: () => [] }
 });
 
-import { router } from '@inertiajs/vue3';
+const focusedProjectId = ref(null);
 
 const markAsRead = (surveyId) => {
-    const notification = props.unread_notifications.find(n => n.message.includes(`id: ${surveyId}`) || n.message.includes(`for project: ${props.recent_activities.find(a => a.id === surveyId)?.project?.name}`));
+    if (!props.unread_notifications) return;
+    const activity = props.recent_activities.find(a => a.id === surveyId);
+    const notification = props.unread_notifications.find(n => 
+        n.message.includes(`id: ${surveyId}`) || 
+        (activity?.project?.name && n.message.includes(`for project: ${activity.project.name}`))
+    );
 };
 
 const hasUnread = (activityId) => {
-    return props.unread_notifications.some(n => n.message.toLowerCase().includes(activityId.toString()) || n.message.includes(props.recent_activities.find(a => a.id === activityId)?.project?.name));
+    if (!props.unread_notifications) return false;
+    const activity = props.recent_activities.find(a => a.id === activityId);
+    return props.unread_notifications.some(n => 
+        n.message.toLowerCase().includes(activityId.toString()) || 
+        (activity?.project?.name && n.message.includes(activity.project.name))
+    );
 };
 
 const handleActivityClick = (activityId) => {
     const activity = props.recent_activities.find(a => a.id === activityId);
-    const notification = props.unread_notifications.find(n => 
-        n.message.includes(activity?.project?.name) || n.message.includes(activityId.toString())
+    const notification = props.unread_notifications?.find(n => 
+        (activity?.project?.name && n.message.includes(activity.project.name)) || 
+        n.message.includes(activityId.toString())
     );
 
     if (notification) {
@@ -42,69 +54,107 @@ const handleActivityClick = (activityId) => {
     }
 };
 
-onMounted(() => {
-    try {
-        if (typeof Chart === 'undefined') {
-            setTimeout(initializeCharts, 1000);
-            return;
-        }
-        initializeCharts();
-    } catch (e) {
-        console.error('Dashboard Error:', e);
-    }
-});
+const userRole = computed(() => props.stats?.user_role || 'staff');
 
-const userRole = computed(() => props.stats.user_role || 'staff');
+const focusedProjectLocation = computed(() => {
+    const defaultLoc = { lat: 3.1390, lng: 101.6869 };
+    if (!focusedProjectId.value || !props.projects_spatial) return defaultLoc;
+    
+    const project = props.projects_spatial.find(p => p.id === focusedProjectId.value);
+    if (!project || !project.boundary) return defaultLoc;
+    
+    try {
+        let geom = project.boundary;
+        if (typeof geom === 'string') geom = JSON.parse(geom);
+
+        // Very safe coordinate extraction
+        if (geom.type === 'Polygon' && geom.coordinates && geom.coordinates[0] && geom.coordinates[0][0]) {
+            return { lat: geom.coordinates[0][0][1], lng: geom.coordinates[0][0][0] };
+        } else if (geom.type === 'Point' && geom.coordinates) {
+            return { lat: geom.coordinates[1], lng: geom.coordinates[0] };
+        }
+        
+        if (turf && turf.centroid) {
+            const centroid = turf.centroid(geom);
+            if (centroid?.geometry?.coordinates) {
+                return { lat: centroid.geometry.coordinates[1], lng: centroid.geometry.coordinates[0] };
+            }
+        }
+    } catch (e) {
+        console.warn("Spatial extraction failed:", e);
+    }
+    return defaultLoc;
+});
 
 const rolePersona = computed(() => {
-    switch (userRole.value) {
-        case 'admin':
-            return {
-                title: 'Strategic Oversight Console',
-                subtitle: 'Total system governance and asset lifecycle management.',
-                banner: 'bg-gradient-to-r from-geo-navy to-slate-900',
-                accent: 'text-geo-teal',
-                trendLabel: 'System Volume Trends',
-                statusLabel: 'Global Audit Integrity',
-                feedTitle: 'Operational Event Feed'
-            };
-        case 'hod':
-            return {
-                title: 'Compliance Control Hub',
-                subtitle: 'Operational integrity oversight and technical validation.',
-                banner: 'bg-gradient-to-r from-teal-900 to-geo-navy',
-                accent: 'text-teal-400',
-                trendLabel: 'Operational Throughput',
-                statusLabel: 'Technical Review Distribution',
-                feedTitle: 'Validation Queue'
-            };
-        default:
-            return {
-                title: 'Personnel Performance Hub',
-                subtitle: 'Field activity tracking and personal evidence repository.',
-                banner: 'bg-gradient-to-r from-slate-700 via-geo-navy to-slate-800',
-                accent: 'text-blue-400',
-                trendLabel: 'Individual Productivity Index',
-                statusLabel: 'Personal Compliance Standing',
-                feedTitle: 'My Operational Log'
-            };
+    const role = userRole.value;
+    if (role === 'admin') {
+        return {
+            title: 'Strategic Oversight Console',
+            subtitle: 'Total system governance and asset lifecycle management.',
+            banner: 'bg-gradient-to-br from-slate-900 via-geo-navy to-amber-950/40',
+            accent: 'text-amber-400',
+            glow: 'after:bg-amber-500/10',
+            trendLabel: 'Network Submission Velocity',
+            statusLabel: 'Global Integrity Matrix',
+            feedTitle: 'Operational Command Feed',
+            cardAccent: 'border-amber-500/10 hover:border-amber-500/40 hover:shadow-amber-500/5',
+            metricColor: 'text-amber-500',
+            btnClass: 'bg-amber-500 text-slate-900 hover:bg-amber-400 shadow-amber-500/20'
+        };
+    } else if (role === 'hod') {
+        return {
+            title: 'Compliance Regulation Hub',
+            subtitle: 'Operational integrity oversight and technical validation.',
+            banner: 'bg-gradient-to-br from-emerald-950 via-geo-navy to-slate-900',
+            accent: 'text-emerald-400',
+            glow: 'after:bg-emerald-500/10',
+            trendLabel: 'Operational Throughput',
+            statusLabel: 'Review Distribution Profile',
+            feedTitle: 'Technical Validation Queue',
+            cardAccent: 'border-emerald-500/10 hover:border-emerald-500/40 hover:shadow-emerald-500/5',
+            metricColor: 'text-emerald-500',
+            btnClass: 'bg-emerald-600 text-white hover:bg-emerald-500 shadow-emerald-500/20'
+        };
+    } else {
+        return {
+            title: 'Personnel Operational Hub',
+            subtitle: 'Field activity tracking and personal evidence repository.',
+            banner: 'bg-gradient-to-br from-slate-900 via-geo-navy to-geo-teal/30',
+            accent: 'text-geo-teal',
+            glow: 'after:bg-geo-teal/10',
+            trendLabel: 'Individual Performance Index',
+            statusLabel: 'Personal Compliance Standing',
+            feedTitle: 'My Operational Pulse',
+            cardAccent: 'border-geo-teal/10 hover:border-geo-teal/40 hover:shadow-geo-teal/5',
+            metricColor: 'text-geo-teal',
+            btnClass: 'bg-geo-teal text-geo-navy hover:brightness-110 shadow-geo-teal/20'
+        };
     }
 });
+
+let charts = [];
 
 const initializeCharts = () => {
     if (typeof Chart === 'undefined') return;
+    charts.forEach(c => c.destroy());
+    charts = [];
+
+    const isDark = document.documentElement.classList.contains('dark');
+    const axisColor = isDark ? '#94a3b8' : '#64748b';
+    const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
 
     const trendCtx = document.getElementById('surveyTrendsChart')?.getContext('2d');
     if (trendCtx && props.chart_data?.monthly?.length > 0) {
-        new Chart(trendCtx, {
+        charts.push(new Chart(trendCtx, {
             type: 'bar',
             data: {
                 labels: props.chart_data.monthly.map(d => d.month || 'Unknown'),
                 datasets: [{
                     label: 'Intelligence Logs',
                     data: props.chart_data.monthly.map(d => d.count || 0),
-                    backgroundColor: '#0d9488',
-                    borderRadius: 8,
+                    backgroundColor: isDark ? (userRole.value === 'admin' ? '#fbbf24' : (userRole.value === 'hod' ? '#10b981' : '#14b8a6')) : '#0d9488',
+                    borderRadius: 12,
                 }]
             },
             options: {
@@ -112,23 +162,37 @@ const initializeCharts = () => {
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
                 scales: { 
-                    y: { beginAtZero: true, grid: { borderDash: [5, 5], color: '#f1f5f9' } }, 
-                    x: { grid: { display: false } } 
+                    y: { 
+                        beginAtZero: true, 
+                        grid: { borderDash: [5, 5], color: gridColor },
+                        ticks: { color: axisColor, font: { weight: 'bold', size: 10 } }
+                    }, 
+                    x: { 
+                        grid: { display: false },
+                        ticks: { color: axisColor, font: { weight: 'bold', size: 10 } }
+                    } 
                 }
             }
-        });
+        }));
     }
 
     const statusCtx = document.getElementById('statusDistChart')?.getContext('2d');
     if (statusCtx && props.chart_data?.status?.length > 0) {
-        new Chart(statusCtx, {
+        charts.push(new Chart(statusCtx, {
             type: 'doughnut',
             data: {
                 labels: props.chart_data.status.map(d => (d.status || 'N/A').toUpperCase()),
                 datasets: [{
                     data: props.chart_data.status.map(d => d.count || 0),
-                    backgroundColor: ['#0d9488', '#fbbf24', '#ef4444'],
-                    borderWidth: 0
+                    backgroundColor: props.chart_data.status.map(d => {
+                        const status = (d.status || '').toLowerCase();
+                        if (status === 'approved') return '#10b981';
+                        if (status === 'pending') return '#fbbf24';
+                        if (status === 'rejected') return '#ef4444';
+                        return '#64748b';
+                    }),
+                    borderWidth: 0,
+                    hoverOffset: 15
                 }]
             },
             options: {
@@ -138,37 +202,63 @@ const initializeCharts = () => {
                     legend: { 
                         position: 'bottom', 
                         labels: { 
+                            color: isDark ? '#cbd5e1' : '#475569',
                             usePointStyle: true, 
-                            boxWidth: 6, 
-                            font: { weight: 'bold', size: 10 },
-                            padding: 20
+                            boxWidth: 8, 
+                            font: { weight: 'black', size: 10 }, 
+                            padding: 25 
                         } 
                     } 
                 },
-                cutout: '72%'
+                cutout: '75%'
             }
-        });
+        }));
     }
 };
 
+onMounted(() => {
+    initializeCharts();
+    window.addEventListener('gss-theme-changed', initializeCharts);
+});
+
+onBeforeUnmount(() => {
+    window.removeEventListener('gss-theme-changed', initializeCharts);
+});
+
 const statItems = computed(() => {
+    const stats = props.stats || {};
     const baseStats = [
-        { name: 'Operational Zones', value: props.stats.active_projects, svg: '<path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />', color: 'text-blue-500' },
-        { name: userRole.value === 'staff' ? 'Personal Logs' : 'Total Intelligence', value: props.stats.total_surveys, svg: '<path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />', color: 'text-indigo-500' },
+        { name: 'Operational Zones', value: stats.active_projects || 0, svg: '<path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />', color: 'text-blue-500' },
+        { name: userRole.value === 'staff' ? 'Personal Logs' : 'Total Intelligence', value: stats.total_surveys || 0, svg: '<path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />', color: 'text-indigo-500' },
     ];
 
-    if (props.stats.user_role === 'admin') {
-        baseStats.push({ name: 'Personnel Units', value: props.stats.staff_count, svg: '<path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />', color: 'text-geo-teal' });
-        baseStats.push({ name: 'System Integrity', value: '98%', svg: '<path d="M13 10V3L4 14h7v7l9-11h-7z" />', color: 'text-yellow-500' });
-    } else if (props.stats.user_role === 'hod') {
-        baseStats.push({ name: 'Pending Review', value: props.stats.pending_approvals, svg: '<path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />', color: 'text-red-500' });
-        baseStats.push({ name: 'Operational QC', value: '8.4', svg: '<path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />', color: 'text-green-500' });
+    if (userRole.value === 'admin') {
+        baseStats.push({ name: 'Personnel Units', value: stats.staff_count || 0, svg: '<path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />', color: 'text-geo-teal' });
+        baseStats.push({ name: 'Most Active Zone', value: stats.top_zone || 'N/A', svg: '<path d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />', color: 'text-yellow-500' });
+    } else if (userRole.value === 'hod') {
+        baseStats.push({ name: 'Pending Review', value: stats.pending_approvals || 0, svg: '<path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />', color: 'text-red-500' });
+        baseStats.push({ name: 'Most Active Zone', value: stats.top_zone || 'N/A', svg: '<path d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />', color: 'text-green-500' });
     } else {
-        baseStats.push({ name: 'Awaiting Audit', value: props.stats.user_pending || 0, svg: '<path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />', color: 'text-orange-500' });
-        baseStats.push({ name: 'Precision Match', value: '100%', svg: '<path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />', color: 'text-emerald-500' });
+        baseStats.push({ name: 'Awaiting Audit', value: stats.user_pending || 0, svg: '<path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />', color: 'text-orange-500' });
+        baseStats.push({ name: 'Primary Operation Zone', value: stats.top_zone || 'N/A', svg: '<path d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />', color: 'text-emerald-500' });
     }
 
     return baseStats;
+});
+
+const topThreeStaff = computed(() => {
+    return [...props.users]
+        .filter(u => u.role === 'staff')
+        .sort((a, b) => (b.surveys_count || 0) - (a.surveys_count || 0))
+        .slice(0, 3);
+});
+
+const hodCuratedFeed = computed(() => {
+    const activities = props.recent_activities || [];
+    const approved = activities.find(a => a.status === 'approved');
+    const pending = activities.find(a => a.status === 'pending');
+    const rejected = activities.find(a => a.status === 'rejected');
+    return [approved, pending, rejected].filter(Boolean);
 });
 </script>
 
@@ -177,211 +267,286 @@ const statItems = computed(() => {
 
     <AuthenticatedLayout>
         <template #header>
-            <div :class="rolePersona.banner" class="p-8 rounded-3xl text-white shadow-2xl relative overflow-hidden transition-all duration-700">
+            <div :class="[rolePersona.banner, rolePersona.glow]" class="p-10 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden transition-all duration-700 after:absolute after:inset-0 after:pointer-events-none">
                 <!-- Branding Decoration -->
-                <div class="absolute -top-24 -right-24 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
-                <div class="absolute -bottom-24 -left-24 w-64 h-64 bg-geo-teal/20 rounded-full blur-3xl"></div>
+                <div class="absolute -top-24 -right-24 w-80 h-80 bg-white/5 rounded-full blur-3xl animate-pulse"></div>
+                <div class="absolute -bottom-24 -left-24 w-80 h-80 bg-geo-teal/10 rounded-full blur-3xl"></div>
 
-                <div class="relative z-10 flex flex-col md:flex-row justify-between items-center gap-6">
-                    <div class="text-center md:text-left">
-                        <div class="flex items-center gap-2 justify-center md:justify-start mb-2">
-                            <span class="px-3 py-1 rounded-full bg-white/20 text-[10px] font-black uppercase tracking-widest border border-white/20 backdrop-blur-md">
-                                {{ userRole }} MODE
+                <div class="relative z-10 flex flex-col lg:flex-row justify-between items-center gap-8">
+                    <div class="text-center lg:text-left">
+                        <div class="flex items-center gap-3 justify-center lg:justify-start mb-4">
+                            <span class="px-4 py-1.5 rounded-full bg-white/10 text-[10px] font-black uppercase tracking-[0.2em] border border-white/10 backdrop-blur-xl">
+                                {{ userRole }} AUTHORITY
                             </span>
-                            <span class="w-1 h-1 rounded-full bg-white/50"></span>
-                            <span class="text-[10px] font-bold text-white/50 tracking-widest uppercase">System v2.4</span>
+                           
                         </div>
-                        <h2 class="font-black text-3xl md:text-4xl tracking-tighter mb-1">
+                        <h2 class="font-black text-4xl lg:text-5xl tracking-tight mb-2 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/70">
                             {{ rolePersona.title }}
                         </h2>
-                        <p class="text-white/70 font-medium italic text-sm md:text-base">
-                            Welcome, <span :class="rolePersona.accent" class="font-bold border-b-2 border-current pb-0.5">{{ $page.props.auth.user.name }}</span>. {{ rolePersona.subtitle }}
+                        <p class="text-white/60 font-medium italic text-sm lg:text-lg max-w-2xl">
+                            Operation Authorization: <span :class="rolePersona.accent" class="font-black px-2 py-0.5 bg-white/5 rounded-lg border border-white/5 mx-1">{{ $page.props.auth.user.name }}</span>. {{ rolePersona.subtitle }}
                         </p>
                     </div>
                     
-                    <div class="flex flex-wrap justify-center gap-3">
+                    <div class="flex flex-col sm:flex-row items-center gap-4 bg-black/20 p-6 rounded-[2rem] border border-white/5 backdrop-blur-md">
                         <Link v-if="userRole === 'admin'" :href="route('projects.index')" 
-                            class="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border border-white/20 px-6 py-3 rounded-2xl text-sm font-black tracking-widest transition-all uppercase">
+                            class="group relative overflow-hidden bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-2xl text-[10px] font-black tracking-[0.2em] transition-all uppercase border border-white/10 w-full sm:w-auto text-center">
                             Zone Oversight
                         </Link>
                         <Link :href="route('surveys.create')" 
-                            class="bg-geo-teal text-geo-navy px-8 py-3 rounded-2xl text-sm font-black shadow-xl hover:scale-105 active:scale-95 transition-all uppercase tracking-widest">
-                            + New Intelligence Log
+                            :class="rolePersona.btnClass"
+                            class="px-10 py-4 rounded-2xl text-[10px] font-black shadow-2xl hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-[0.2em] w-full sm:w-auto text-center">
+                            + Initialize Log
                         </Link>
                     </div>
                 </div>
             </div>
         </template>
 
-        <div class="py-8 bg-gray-50 min-h-screen">
+        <div class="py-8 bg-[var(--geo-bg)] min-h-screen transition-colors duration-500">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-8">
                 
                 <!-- Role Specific Alert/Action -->
-                <div v-if="$page.props.auth.user.role === 'hod' && stats.pending_approvals > 0" class="bg-red-50 border-l-4 border-red-500 p-4 rounded-xl flex items-center justify-between">
+                <div v-if="$page.props.auth.user.role === 'hod' && stats.pending_approvals > 0" class="bg-red-50 dark:bg-red-950/20 border-l-4 border-red-500 p-4 rounded-xl flex items-center justify-between transition-colors duration-500">
                     <div class="flex items-center">
                         <svg class="h-6 w-6 text-red-500 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
-                        <span class="text-red-800 font-bold">You have {{ stats.pending_approvals }} site surveys awaiting technical approval.</span>
+                        <span class="text-red-800 dark:text-red-300 font-bold">You have {{ stats.pending_approvals }} site surveys awaiting technical approval.</span>
                     </div>
-                    <Link :href="route('surveys.index', { status: 'pending' })" class="text-red-700 font-bold text-sm underline hover:text-red-800">Clear Queue →</Link>
+                    <Link :href="route('surveys.index', { status: 'pending' })" class="text-red-700 dark:text-red-400 font-bold text-sm underline hover:text-red-800">Clear Queue →</Link>
                 </div>
 
-                <!-- Stats Grid -->
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <div v-for="stat in statItems" :key="stat.name" 
-                        class="bg-white p-6 rounded-2xl shadow-glass border border-gray-100 hover:scale-105 transition-all duration-300 group">
-                        <div class="flex items-center justify-between mb-2">
-                            <div :class="stat.color" class="p-3 bg-opacity-10 rounded-xl bg-current transition-colors">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" v-html="stat.svg"></svg>
+                <!-- Stats Matrix -->
+                <transition-group 
+                    appear
+                    tag="div" 
+                    name="staggered-fade"
+                    class="grid grid-cols-2 lg:grid-cols-4 gap-4"
+                >
+                    <div v-for="(stat, index) in statItems" :key="stat.name" 
+                        :style="{ transitionDelay: `${index * 100}ms` }"
+                        :class="rolePersona.cardAccent"
+                        class="bg-[var(--geo-surface)] p-5 rounded-[1.5rem] shadow-glass border border-[var(--geo-border)] transition-all duration-500 group hover:-translate-y-1 relative overflow-hidden"
+                    >
+                        <div class="absolute top-0 right-0 p-2 opacity-5 group-hover:scale-125 transition-transform duration-700">
+                             <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" v-html="stat.svg"></svg>
+                        </div>
+                        <div class="flex items-center justify-between mb-3">
+                            <div :class="stat.color" class="p-2.5 bg-opacity-10 rounded-xl bg-current transition-all group-hover:rotate-6">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" v-html="stat.svg"></svg>
                             </div>
                         </div>
-                        <p class="text-3xl font-extrabold text-geo-navy group-hover:text-geo-teal transition-colors">{{ stat.value }}</p>
-                        <p class="text-xs font-bold text-geo-slate uppercase tracking-widest mt-1">{{ stat.name }}</p>
-                    </div>
-                </div>
-
-                <!-- NEW: Operational Analytics (Charts) -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <!-- Survey Trends (Bar) -->
-                    <div class="md:col-span-2 bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="text-lg font-bold text-geo-navy">{{ rolePersona.trendLabel }}</h3>
-                            <span class="text-[10px] font-bold text-geo-teal uppercase tracking-widest bg-teal-50 px-3 py-1 rounded-full">Intelligence Velocity</span>
+                        <p class="text-[9px] font-black text-geo-slate dark:text-gray-400 uppercase tracking-widest mb-1 transition-colors">{{ stat.name }}</p>
+                        <div class="flex items-baseline gap-1.5">
+                             <p :class="rolePersona.metricColor" class="text-2xl font-black transition-colors">{{ stat.value }}</p>
+                             
                         </div>
-                        <div class="h-64">
+                    </div>
+                </transition-group>
+
+                <!-- Analytical Intelligence Rows -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Dynamic Insight Panel (Charts) -->
+                    <div class="lg:col-span-2 bg-[var(--geo-surface)] p-8 rounded-[2.5rem] shadow-sm border border-[var(--geo-border)] transition-colors duration-500 relative overflow-hidden group">
+                        <div class="absolute top-0 right-0 w-32 h-32 bg-geo-teal/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
+                        <div class="flex justify-between items-center mb-8">
+                            <div>
+                                <h3 class="text-xl font-black text-geo-navy dark:text-white transition-colors">{{ rolePersona.trendLabel }}</h3>
+                                <p class="text-[10px] text-geo-slate dark:text-gray-400 font-bold uppercase tracking-widest mt-1">Institutional submission velocity index</p>
+                            </div>
+                            
+                        </div>
+                        <div class="h-72">
                             <canvas id="surveyTrendsChart"></canvas>
                         </div>
                     </div>
 
-                    <!-- Survey Status (Doughnut) -->
-                    <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-                        <div class="mb-4">
-                            <h3 class="text-lg font-bold text-geo-navy">{{ rolePersona.statusLabel }}</h3>
-                            <p class="text-xs text-geo-slate font-medium italic">Operational clearance profile</p>
+                    <!-- Integrity Profile (Doughnut) -->
+                    <div class="bg-[var(--geo-surface)] p-8 rounded-[2.5rem] shadow-sm border border-[var(--geo-border)] transition-colors duration-500">
+                        <div class="mb-8">
+                            <h3 class="text-xl font-black text-geo-navy dark:text-white transition-colors">{{ rolePersona.statusLabel }}</h3>
+                            <p class="text-[10px] text-geo-slate dark:text-gray-400 font-bold uppercase tracking-widest mt-1 italic">Audit Integrity Spectrum</p>
                         </div>
-                        <div class="h-64">
+                        <div class="h-72 relative">
                             <canvas id="statusDistChart"></canvas>
+                            <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div class="text-center">
+                                    <p class="text-[9px] font-black text-geo-slate uppercase tracking-widest">Total Reports</p>
+                                    <p class="text-2xl font-black text-geo-navy dark:text-white">{{ stats.total_surveys || 0 }}</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Main Content Row -->
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 text-sm">
+                <!-- Spatial Intelligence Core -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     
-                    <!-- Map Preview -->
-                    <div class="lg:col-span-2 bg-white p-2 rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                        <div class="p-4 flex justify-between items-center">
-                            <h3 class="text-lg font-bold text-geo-navy">Geospatial Intelligence Map</h3>
-                            <span class="text-[10px] text-geo-slate font-bold uppercase tracking-tighter">Live Spatial Telemetry</span>
+                    <!-- Expanded Map View -->
+                    <div class="lg:col-span-8 xl:col-span-9 bg-[var(--geo-surface)] p-1 rounded-[2rem] shadow-sm border border-[var(--geo-border)] overflow-hidden transition-colors duration-500 relative group flex flex-col">
+                        <div class="absolute inset-0 border-[8px] border-[var(--geo-surface)] rounded-[2rem] pointer-events-none z-10"></div>
+                        <div class="p-5 flex justify-between items-center relative z-20">
+                            <div>
+                                <h3 class="text-lg font-black text-geo-navy dark:text-white transition-colors">Digital Twin Viewport</h3>
+                                <p class="text-[9px] text-geo-slate dark:text-gray-400 font-bold uppercase tracking-widest mt-0.5">Live Geospatial Asset Telemetry</p>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <div class="bg-black/10 dark:bg-white/5 p-1 rounded-xl border border-white/5 backdrop-blur-md flex items-center shadow-inner">
+                                    <span class="text-[8px] font-black text-geo-slate dark:text-gray-400 uppercase tracking-widest px-3">Filter:</span>
+                                    <select 
+                                        v-model="focusedProjectId"
+                                        class="text-[9px] bg-white dark:bg-geo-navy border-none rounded-lg py-1.5 px-3 font-black text-geo-navy dark:text-white focus:ring-1 focus:ring-geo-teal transition-all outline-none min-w-[140px] cursor-pointer shadow-sm"
+                                    >
+                                        <option :value="null">{{ userRole === 'staff' ? 'PERSONAL SECTOR VIEW' : 'GLOBAL FLEET VIEW' }}</option>
+                                        <option v-for="p in projects_spatial" :key="p.id" :value="p.id">{{ p.name.toUpperCase() }}</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
-                        <div class="h-[450px]">
-                            <MapViewer readOnly :projects="projects_spatial" />
+                        <div class="flex-1 relative min-h-[550px]">
+                            <MapViewer 
+                                readOnly 
+                                :projects="projects_spatial" 
+                                :focusProject="focusedProjectId" 
+                                :modelValue="focusedProjectLocation"
+                            />
                         </div>
                     </div>
 
-                    <!-- Side Panel: Activity & Quick Actions -->
-                    <div class="space-y-8">
-                        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-                            <h3 class="text-lg font-bold text-geo-navy mb-5 flex items-center">
-                                <span class="w-2 h-2 rounded-full bg-geo-teal mr-2"></span>
-                                {{ rolePersona.feedTitle }}
-                            </h3>
-                            <div class="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                                <div v-for="activity in recent_activities" :key="activity.id" 
-                                    @click="handleActivityClick(activity.id)"
-                                    class="flex items-start space-x-3 p-4 hover:bg-gray-50 rounded-2xl transition border border-transparent hover:border-gray-200 cursor-pointer relative group">
-                                    
-                                    <!-- Red Dot Badge -->
-                                    <div v-if="hasUnread(activity.id)" class="absolute top-3 right-3 w-3 h-3 bg-red-500 rounded-full border-2 border-white shadow-sm z-10 animate-pulse"></div>
-
-                                    <div class="flex-shrink-0 w-10 h-10 rounded-full bg-geo-navy flex items-center justify-center text-white text-xs font-bold">
-                                        #{{ String(activity.id).padStart(2, '0') }}
-                                    </div>
-                                    <div class="flex-1">
-                                        <div class="flex justify-between items-start">
-                                            <p class="font-bold text-geo-navy truncate w-32">{{ activity.project?.name || 'Unknown Project' }}</p>
-                                            <span :class="activity.status === 'approved' ? 'text-green-600' : 'text-yellow-600'" class="text-[9px] font-black uppercase tracking-tighter">{{ activity.status }}</span>
-                                        </div>
-                                        <p class="text-[11px] text-geo-slate leading-tight mt-0.5">{{ activity.user?.name || 'Unknown User' }} • {{ $formatDate(activity.created_at) }}</p>
-                                    </div>
-                                </div>
-                                <div v-if="recent_activities.length === 0" class="py-12 text-center text-geo-slate italic">
-                                    No field movements detected.
+                    <!-- Side Panel: Activity Console -->
+                    <div class="lg:col-span-4 xl:col-span-3 flex flex-col gap-6">
+                        <div class="bg-[var(--geo-surface)] p-6 rounded-[2rem] shadow-sm border border-[var(--geo-border)] transition-colors duration-500 flex-1 flex flex-col min-h-[500px]">
+                            <div class="flex items-center justify-between mb-6">
+                                <h3 class="text-xs font-black text-geo-navy dark:text-white uppercase tracking-widest flex items-center transition-colors">
+                                    <span :class="userRole === 'admin' ? 'bg-amber-500' : (userRole === 'hod' ? 'bg-emerald-500' : 'bg-geo-teal')" class="w-2 h-2 rounded-full mr-2.5 shadow-lg shadow-current"></span>
+                                    Audit Feed
+                                </h3>
+                                <div v-if="userRole === 'staff'" class="bg-gray-100 dark:bg-white/5 p-1 rounded-lg">
+                                    <select 
+                                        v-model="focusedProjectId"
+                                        class="text-[8px] bg-transparent border-none py-0.5 px-2 font-black text-geo-navy dark:text-white outline-none max-w-[80px] truncate cursor-pointer"
+                                    >
+                                        <option :value="null">Fleet</option>
+                                        <option v-for="p in projects_spatial" :key="p.id" :value="p.id">{{ p.name.toUpperCase() }}</option>
+                                    </select>
                                 </div>
                             </div>
-                            <Link :href="route('surveys.index')" class="block text-center mt-6 py-2 rounded-xl text-xs font-bold text-geo-blue border border-geo-blue/20 hover:bg-geo-blue hover:text-white transition-all">
-                                ACCESS FULL LOGS
+                            
+                            <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3">
+                                <div v-for="(activity, index) in (userRole === 'admin' ? recent_activities.slice(0, 5) : (userRole === 'hod' ? hodCuratedFeed : recent_activities))" :key="activity.id" 
+                                    @click="handleActivityClick(activity.id)"
+                                    class="flex items-center gap-3 hover:bg-gray-50/50 dark:hover:bg-white/5 p-3 rounded-2xl transition-all duration-300 cursor-pointer relative group border border-transparent hover:border-[var(--geo-border)]"
+                                >
+                                    <div class="relative z-10 flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all group-hover:scale-105"
+                                        :class="activity.status === 'approved' ? 'bg-emerald-500/10 text-emerald-600' : (activity.status === 'rejected' ? 'bg-red-500/10 text-red-600' : 'bg-amber-500/10 text-amber-600')">
+                                        <i :class="activity.status === 'approved' ? 'fa-solid fa-circle-check' : (activity.status === 'rejected' ? 'fa-solid fa-circle-xmark' : 'fa-solid fa-circle-pause')" class="text-sm"></i>
+                                    </div>
+
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex justify-between items-center">
+                                            <p class="font-black text-geo-navy dark:text-white text-[10px] uppercase tracking-tight truncate transition-colors">{{ activity.project?.name || 'Log' }}</p>
+                                            <span v-if="activity.created_at" class="text-[7.5px] font-bold text-geo-slate dark:text-gray-500">{{ $formatDate(activity.created_at) }}</span>
+                                        </div>
+                                        <div class="flex items-center gap-2 mt-0.5">
+                                            <p class="text-[9px] font-bold text-geo-slate dark:text-gray-400 truncate transition-colors">Unit: {{ activity.user?.name || 'Alpha' }}</p>
+                                            <div class="w-1 h-1 rounded-full bg-gray-200 dark:bg-white/10"></div>
+                                            <span :class="activity.status === 'approved' ? 'text-emerald-500' : (activity.status === 'rejected' ? 'text-red-500' : 'text-amber-500')" class="text-[7.5px] font-black uppercase tracking-widest italic">
+                                                {{ activity.status }}
+                                            </span>
+                                        </div>
+                                        <div v-if="hasUnread(activity.id)" class="absolute top-2 right-2 w-1.5 h-1.5 bg-red-500 rounded-full shadow-lg shadow-red-500/50 animate-ping"></div>
+                                    </div>
+                                </div>
+                                <div v-if="recent_activities.length === 0" class="py-12 text-center text-[9px] font-bold text-geo-slate dark:text-gray-500 italic uppercase">Silent Sector</div>
+                            </div>
+                            
+                            <!-- HOD: Strategic Decision Queue (Minimalist Sidebar) -->
+                            <div v-if="userRole === 'hod'" class="mt-6 border-t border-[var(--geo-border)] pt-6">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h3 class="text-[9px] font-black text-geo-navy dark:text-white uppercase tracking-widest flex items-center">
+                                        <i class="fa-solid fa-list-check text-red-500 mr-2"></i>
+                                        Decision Queue
+                                    </h3>
+                                    <span class="text-[8px] font-black bg-red-500/10 text-red-500 px-2 py-0.5 rounded">{{ pending_details.length }} Pending</span>
+                                </div>
+                                <div class="space-y-2 max-h-[160px] overflow-y-auto pr-1 custom-scrollbar">
+                                    <Link v-for="item in pending_details" :key="item.id" :href="route('surveys.show', item.id)"
+                                        class="flex items-center justify-between p-2.5 bg-red-500/5 hover:bg-red-500 rounded-xl transition-all group border border-red-500/10">
+                                        <div class="flex items-center gap-2 min-w-0">
+                                            <div class="w-6 h-6 rounded-lg bg-red-500/10 flex items-center justify-center group-hover:bg-white/20 transition-colors shrink-0">
+                                                <span class="text-[8px] font-black text-red-600 group-hover:text-white uppercase">{{ item.user?.name?.charAt(0) || 'U' }}</span>
+                                            </div>
+                                            <p class="text-[9px] font-black text-geo-navy dark:text-white group-hover:text-white truncate uppercase">{{ item.project?.name || 'Recon' }}</p>
+                                        </div>
+                                        <i class="fa-solid fa-chevron-right text-[8px] text-red-400 group-hover:text-white"></i>
+                                    </Link>
+                                    <div v-if="pending_details.length === 0" class="py-4 text-center">
+                                        <p class="text-[8px] font-black text-emerald-500 uppercase italic">Queue Clear</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <Link :href="route('surveys.index')" class="block text-center mt-6 py-3 rounded-xl text-[8px] font-black text-geo-slate dark:text-geo-teal bg-gray-50 dark:bg-white/5 border border-transparent hover:border-geo-teal/20 transition-all uppercase tracking-[0.2em]">
+                                Full Registry
                             </Link>
                         </div>
 
-                        <!-- Role Specific Card -->
-                        <div v-if="$page.props.auth.user.role === 'staff'" class="bg-geo-navy p-6 rounded-3xl shadow-xl text-white">
-                            <h3 class="text-sm font-bold text-geo-teal mb-2 uppercase tracking-widest">Field Guidance</h3>
-                            <p class="text-xs text-gray-300 leading-relaxed mb-4">Ensure your GPS marker turns <span class="text-geo-teal font-bold underline">Teal</span> before submitting evidence to guarantee survey validity.</p>
-                            <Link :href="route('surveys.create')" class="inline-block text-xs font-bold text-geo-navy bg-geo-teal px-4 py-2 rounded-lg">START SURVEY NOW</Link>
+                        <!-- Admin: Consolidated Fleet Performance -->
+                        <div v-if="userRole === 'admin'" class="bg-[var(--geo-surface)] p-6 rounded-[2rem] shadow-sm border border-[var(--geo-border)] transition-colors duration-500 flex flex-col">
+                            <div class="flex justify-between items-center mb-5">
+                                <div>
+                                    <h3 class="text-[10px] font-black text-geo-navy dark:text-white uppercase tracking-widest transition-colors">Top Tactical Units</h3>
+                                    <p class="text-[7.5px] text-geo-slate dark:text-gray-500 font-bold uppercase tracking-tight mt-0.5">High-Velocity Operations</p>
+                                </div>
+                                <i class="fa-solid fa-trophy text-amber-500 text-[10px]"></i>
+                            </div>
+                            <div class="space-y-2.5">
+                                <div v-for="(user, index) in topThreeStaff" :key="user.id" class="flex items-center gap-3 p-2.5 bg-gray-50/50 dark:bg-white/5 border border-transparent hover:border-geo-teal/20 rounded-xl transition-all group">
+                                    <div class="relative">
+                                        <div class="w-7 h-7 rounded-lg bg-geo-navy group-hover:bg-geo-teal flex items-center justify-center text-white font-black text-[9px] transition-all shadow-inner">
+                                            {{ user.name?.charAt(0) }}
+                                        </div>
+                                        <div class="absolute -top-1 -right-1 w-3 h-3 bg-white dark:bg-geo-navy rounded-full border border-gray-100 dark:border-white/10 flex items-center justify-center text-[6px] font-black text-geo-teal">
+                                            {{ index + 1 }}
+                                        </div>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="font-black text-geo-navy dark:text-white text-[9px] truncate transition-colors">{{ user.name }}</p>
+                                        <div class="flex items-center gap-2">
+                                            <p class="text-[7px] font-bold text-geo-slate dark:text-gray-500 uppercase tracking-tighter">{{ user.surveys_count || 0 }} Submissions</p>
+                                            <div class="w-1 h-1 rounded-full bg-geo-teal/30"></div>
+                                            <span class="text-[6.5px] font-black text-geo-teal uppercase">Active</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div v-if="topThreeStaff.length === 0" class="py-6 text-center">
+                                    <p class="text-[8px] font-bold text-geo-slate dark:text-gray-500 italic uppercase">Deploying Units...</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Guidance Box -->
+                        <div v-if="$page.props.auth.user.role === 'staff'" class="bg-gradient-to-br from-geo-navy to-slate-900 p-6 rounded-[2rem] shadow-xl text-white relative overflow-hidden group">
+                            <div class="absolute -top-10 -right-10 w-32 h-32 bg-geo-teal/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-1000"></div>
+                            <h3 class="text-sm font-black text-geo-teal mb-3 uppercase tracking-[0.25em]">Tactical Field Guidance</h3>
+                            <p class="text-xs text-gray-400 leading-relaxed mb-4 italic">Precision telemetry is required. Ensure your GPS marker illuminates <span class="text-geo-teal font-black underline">Cyan</span> before initiating evidence capture.</p>
+                            <Link :href="route('surveys.create')" class="flex items-center justify-center gap-2 text-[10px] font-black text-geo-navy bg-geo-teal px-6 py-3 rounded-xl hover:brightness-110 active:scale-95 transition-all uppercase tracking-[0.2em]">
+                                <i class="fa-solid fa-map-location-dot"></i>
+                                INITIALIZE SURVEY
+                            </Link>
                         </div>
                     </div>
                 </div>
 
-                <!-- NEW: Role Specific Bottom Widgets -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <!-- Admin: User Management Overview -->
-                    <div v-if="$page.props.auth.user.role === 'admin'" class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-                        <div class="flex justify-between items-center mb-6">
-                            <h3 class="text-lg font-bold text-geo-navy">Active Personnel</h3>
-                            <span class="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-[10px] font-black uppercase">Fleet View</span>
-                        </div>
-                        <div class="space-y-4">
-                            <div v-for="user in users" :key="user.id" class="flex items-center justify-between p-3 border border-gray-50 rounded-2xl hover:bg-gray-50 transition">
-                                <div class="flex items-center space-x-3">
-                                    <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs uppercase">
-                                        {{ user.name?.charAt(0) }}
-                                    </div>
-                                    <div>
-                                        <p class="font-bold text-geo-navy">{{ user.name }}</p>
-                                        <p class="text-[10px] text-geo-slate">{{ user.email }}</p>
-                                    </div>
-                                </div>
-                                <span class="text-[10px] font-bold text-geo-slate uppercase bg-gray-100 px-2 py-0.5 rounded">{{ user.role }}</span>
-                            </div>
-                        </div>
-                    </div>
+                <!-- Specialized Strategic Modules -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 pb-12">
+                    
+                    <!-- Admin Fleet Intel removed and moved to side panel -->
 
-                    <!-- HOD: Pending Decisions -->
-                    <div v-if="$page.props.auth.user.role === 'hod'" class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-                        <div class="flex justify-between items-center mb-6">
-                            <h3 class="text-lg font-bold text-geo-navy">Strategic Approval Queue</h3>
-                            <span class="bg-red-50 text-red-600 px-3 py-1 rounded-full text-[10px] font-black uppercase">Critical Path</span>
-                        </div>
-                        <div class="space-y-4">
-                            <Link v-for="item in pending_details" :key="item.id" :href="route('surveys.show', item.id)" class="block p-4 border-2 border-red-50 rounded-2xl hover:border-red-200 transition bg-red-50/10">
-                                <div class="flex justify-between items-center">
-                                    <p class="font-bold text-geo-navy uppercase text-xs">{{ item.project?.name || 'Audit Required' }}</p>
-                                    <span class="text-[9px] font-black text-red-600">PENDING ACTION</span>
-                                </div>
-                                <p class="text-[11px] text-geo-slate mt-1">Submitted by: <span class="font-bold">{{ item.user?.name || 'Field Unit' }}</span></p>
-                            </Link>
-                            <div v-if="pending_details.length === 0" class="py-8 text-center text-geo-slate italic text-xs">
-                                No critical decisions pending at this time.
-                            </div>
-                        </div>
-                    </div>
+                    <!-- HOD Bottom section removed - consolidated to sidebar -->
 
-                    <!-- Staff: Performance Metrics -->
-                    <div v-if="$page.props.auth.user.role === 'staff'" class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-                        <h3 class="text-lg font-bold text-geo-navy mb-6">Field Performance Metrics</h3>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
-                                <p class="text-[10px] font-bold text-emerald-600 uppercase">GPS Precision</p>
-                                <p class="text-2xl font-black text-emerald-800">0.8m</p>
-                            </div>
-                            <div class="p-4 bg-blue-50 rounded-2xl border border-blue-100">
-                                <p class="text-[10px] font-bold text-blue-600 uppercase">In-Zone Rate</p>
-                                <p class="text-2xl font-black text-blue-800">100%</p>
-                            </div>
-                        </div>
-                    </div>
+                    <!-- Staff: Precision Analytics (Removed) -->
                 </div>
 
             </div>
@@ -394,11 +559,20 @@ const statItems = computed(() => {
     width: 4px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
-    background: #f1f1f1;
+    background: transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #0a192f;
+    background: rgba(100, 116, 139, 0.2);
     border-radius: 10px;
 }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 116, 139, 0.4);
+}
+.staggered-fade-enter-active {
+    transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.staggered-fade-enter-from {
+    opacity: 0;
+    transform: translateY(20px);
+}
 </style>
-

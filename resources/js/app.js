@@ -1,5 +1,22 @@
-import './bootstrap';
 import '../css/app.css';
+
+// Initialize PWA Service Worker Network Interception
+import { registerSW } from 'virtual:pwa-register';
+if (typeof window !== 'undefined') {
+    registerSW({ immediate: true });
+}
+
+// System-wide Transpilation Guard
+if (typeof window !== 'undefined') {
+    window.__publicField = (obj, key, value) => {
+        if (typeof Object.defineProperty === 'function') {
+            Object.defineProperty(obj, key, { enumerable: true, configurable: true, writable: true, value: value });
+        } else {
+            obj[key] = value;
+        }
+        return value;
+    };
+}
 
 import { createApp, h } from 'vue';
 import { createInertiaApp } from '@inertiajs/vue3';

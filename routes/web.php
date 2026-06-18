@@ -31,6 +31,15 @@ Route::middleware(['auth', 'verified', 'no-cache'])->group(function () {
     Route::get('/dashboard', function () {
         $user = auth()->user();
         
+        $mostActiveProject = \App\Models\Survey::select('project_id', \Illuminate\Support\Facades\DB::raw('COUNT(*) as count'))
+            ->when($user->role === 'staff', function($query) use ($user) {
+                return $query->where('user_id', $user->id);
+            })
+            ->groupBy('project_id')
+            ->orderBy('count', 'desc')
+            ->with('project')
+            ->first();
+
         $stats = [
             'active_projects' => \App\Models\Project::count(),
             'total_surveys' => $user->role === 'staff' 
@@ -40,6 +49,7 @@ Route::middleware(['auth', 'verified', 'no-cache'])->group(function () {
             'staff_count' => \App\Models\User::where('role', 'staff')->count(),
             'user_role' => $user->role,
             'user_pending' => \App\Models\Survey::where('user_id', $user->id)->where('status', 'pending')->count(),
+            'top_zone' => $mostActiveProject && $mostActiveProject->project ? $mostActiveProject->project->name : 'Awaiting Data',
         ];
 
         // Chart Data: Monthly Trends (Last 6 Months)
@@ -72,14 +82,25 @@ Route::middleware(['auth', 'verified', 'no-cache'])->group(function () {
             ->take(5)
             ->get();
 
-        $projects_spatial = \App\Models\Project::select('id', 'name')
+        $projects_spatial = \App\Models\Project::select('id', 'name', 'description', 'deadline_date', 'cost')
             ->selectRaw('ST_AsGeoJSON(boundary) as boundary_json')
+            ->withCount('surveys')
+            ->with(['surveys' => function($q) {
+                $q->latest()->with('user');
+            }])
             ->get()
             ->map(function($project) {
+                $latest = $project->surveys->first();
                 return [
                     'id' => $project->id,
                     'name' => $project->name,
-                    'boundary' => json_decode($project->boundary_json)
+                    'description' => $project->description,
+                    'deadline_date' => $project->deadline_date,
+                    'cost' => $project->cost,
+                    'boundary' => json_decode($project->boundary_json),
+                    'survey_count' => $project->surveys_count,
+                    'latest_submitter' => ($latest && $latest->user) ? $latest->user->name : 'N/A',
+                    'latest_date' => $latest ? $latest->created_at->diffForHumans() : 'No Activity'
                 ];
             });
 
@@ -91,7 +112,7 @@ Route::middleware(['auth', 'verified', 'no-cache'])->group(function () {
                 'status' => $statusBreakdown
             ],
             'projects_spatial' => $projects_spatial,
-            'users' => $user->role === 'admin' ? \App\Models\User::take(5)->get() : [],
+            'users' => $user->role === 'admin' ? \App\Models\User::where('role', 'staff')->withCount('surveys')->orderBy('surveys_count', 'desc')->take(10)->get() : [],
             'pending_details' => $user->role === 'hod' ? \App\Models\Survey::with(['project', 'user'])->where('status', 'pending')->take(5)->get() : [],
             'unread_notifications' => \App\Models\AppNotification::where('user_id', $user->id)->where('is_read', false)->get()
         ]);
@@ -99,7 +120,7 @@ Route::middleware(['auth', 'verified', 'no-cache'])->group(function () {
 
     // Shared routes
     Route::resource('surveys', \App\Http\Controllers\SurveyController::class);
-    Route::get('/reports/survey/{survey}', [\App\Http\Controllers\ReportController::class, 'generate'])->name('reports.survey');
+    Route::match(['get', 'post'], '/reports/survey/{survey}', [\App\Http\Controllers\ReportController::class, 'generate'])->name('reports.survey');
     Route::get('/reports/monthly', [\App\Http\Controllers\ReportController::class, 'monthly'])->name('reports.monthly');
 
     // Admin Only
@@ -130,9 +151,27 @@ Route::middleware(['auth', 'verified', 'no-cache'])->group(function () {
                 'selected_year' => (int)$year
             ];
             return inertia('Admin/Reports', [
-                'stats' => $stats
+                'stats' => $stats,
+                'projects' => \App\Models\Project::select('id', 'name', 'description', 'deadline_date', 'cost')
+                    ->selectRaw('ST_AsGeoJSON(boundary) as boundary_json')
+                    ->get()
+                    ->map(function($p) {
+                        return [
+                            'id' => $p->id,
+                            'name' => $p->name,
+                            'description' => $p->description,
+                            'deadline_date' => $p->deadline_date,
+                            'cost' => $p->cost,
+                            'boundary' => json_decode($p->boundary_json)
+                        ];
+                    })
             ]);
         })->name('admin.reports');
+
+        // Bulk Data Operations (Phase 6)
+        Route::get('/admin/bulk/surveys/export', [\App\Http\Controllers\BulkDataController::class, 'exportSurveys'])->name('admin.bulk.surveys.export');
+        Route::get('/admin/bulk/projects/export', [\App\Http\Controllers\BulkDataController::class, 'exportProjects'])->name('admin.bulk.projects.export');
+        Route::get('/api/analytics/spatial', [\App\Http\Controllers\BulkDataController::class, 'spatialIntelligence'])->name('api.analytics.spatial');
     });
 
     // HOD Only
@@ -141,10 +180,9 @@ Route::middleware(['auth', 'verified', 'no-cache'])->group(function () {
     });
 
     // Notifications
-    Route::patch('/notifications/{notification}/read', function (\App\Models\AppNotification $notification) {
-        $notification->update(['is_read' => true]);
-        return back();
-    })->name('notifications.read');
+    Route::get('/api/notifications/unread', [\App\Http\Controllers\NotificationController::class, 'unread'])->name('notifications.unread');
+    Route::patch('/notifications/mark-all', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('notifications.markAll');
+    Route::patch('/notifications/{notification}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('notifications.read');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
