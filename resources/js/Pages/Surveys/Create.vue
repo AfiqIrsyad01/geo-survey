@@ -2,6 +2,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import MapViewer from '@/Components/MapViewer.vue';
+import CustomSelect from '@/Components/CustomSelect.vue';
 import { ref, nextTick } from 'vue';
 import * as turf from '@turf/turf';
 import { useOfflineStore } from '@/Utils/offlineStore';
@@ -48,8 +49,8 @@ function handleFileChange(event) {
 }
 
 function handleProjectChange() {
-    // Cast to Number — HTML selects always emit strings
     const raw = form.project_id;
+    // CustomSelect emits the exact value — but cast to Number for safety just as before
     const numericId = (raw !== null && raw !== '' && raw !== undefined) ? Number(raw) : null;
     form.project_id = numericId;
 
@@ -261,11 +262,13 @@ const executeSubmit = () => {
                     <!-- Step 1: Project Dropdown but BIG -->
                     <div class="bg-[var(--geo-surface)] p-6 rounded-3xl shadow-sm border border-[var(--geo-border)]">
                         <label class="block text-[10px] font-black text-geo-slate dark:text-gray-400 uppercase tracking-widest mb-4">Step 1: Geographic Assignment</label>
-                        <select v-model="form.project_id" @change="handleProjectChange" 
-                            class="w-full py-4 px-6 rounded-2xl bg-gray-50 dark:bg-white/5 border-none text-lg font-bold text-geo-navy dark:text-white focus:ring-2 focus:ring-geo-teal shadow-inner transition-colors">
-                            <option :value="null">Select Project Zone...</option>
-                            <option v-for="project in projects" :key="project.id" :value="project.id">{{ project.name }}</option>
-                        </select>
+                        <CustomSelect
+                            v-model="form.project_id"
+                            @change="handleProjectChange"
+                            :options="[{ value: null, label: 'Select Project Zone...' }, ...projects.map(p => ({ value: p.id, label: p.name }))]"
+                            placeholder="Select Project Zone..."
+                            customClass="w-full py-3 px-3 rounded-2xl bg-gray-50 dark:bg-white/5 border-none text-sm font-bold text-geo-navy dark:text-white shadow-inner transition-colors"
+                        />
                     </div>
 
                     <!-- Step 2: Map Visualization BIG -->
@@ -325,11 +328,14 @@ const executeSubmit = () => {
                     <!-- Top: Major Form Controls -->
                     <div class="bg-[var(--geo-surface)] p-6 rounded-3xl shadow-sm border border-[var(--geo-border)] grid grid-cols-1 md:grid-cols-2 gap-6 transition-colors duration-500">
                         <div class="space-y-2">
-                            <label class="block text-[10px] font-black text-geo-navy dark:text-gray-400 uppercase tracking-[0.2em] mb-1">Geographic Mission Assignment</label>
-                            <select v-model="form.project_id" @change="handleProjectChange" class="w-full rounded-2xl border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-white/5 py-4 text-sm font-black text-geo-navy dark:text-white focus:bg-white dark:focus:bg-geo-navy focus:ring-geo-teal transition-all">
-                                <option :value="null">Select an active project zone...</option>
-                                <option v-for="project in projects" :key="project.id" :value="project.id">{{ project.name }}</option>
-                            </select>
+                            <label class="block text-[10px] font-black text-geo-navy dark:text-gray-400 uppercase tracking-[0.2em] mb-1">Select Project Zones</label>
+                            <CustomSelect
+                                v-model="form.project_id"
+                                @change="handleProjectChange"
+                                :options="[{ value: null, label: 'Select an active project zone...' }, ...projects.map(p => ({ value: p.id, label: p.name }))]"
+                                placeholder="Select an active project zone..."
+                                customClass="w-full rounded-2xl border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-white/5 py-3.5 text-xs font-black text-geo-navy dark:text-white transition-all"
+                            />
                         </div>
                         <div class="flex items-center justify-end">
                             <div v-if="form.project_id" class="p-4 bg-teal-50 dark:bg-geo-teal/10 border border-geo-teal/20 rounded-2xl flex items-center gap-4">
@@ -374,7 +380,7 @@ const executeSubmit = () => {
                         <div class="lg:col-span-2 bg-[var(--geo-surface)] p-8 rounded-3xl shadow-sm border border-[var(--geo-border)] transition-all duration-500"
                             :class="{ 'opacity-40 grayscale pointer-events-none': !form.project_id || !isLocationInitialized }">
                             <div class="flex items-center justify-between mb-6">
-                                <label class="block text-[10px] font-black text-geo-navy dark:text-gray-400 uppercase tracking-[0.2em]">Evidence Registry</label>
+                                <label class="block text-[10px] font-black text-geo-navy dark:text-gray-400 uppercase tracking-[0.2em]">Evidence Upload</label>
                                 <span v-if="!form.project_id" class="text-[9px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-3 py-1 rounded-full border border-amber-100 dark:border-amber-900/30">Select Project First</span>
                             </div>
                             
@@ -385,7 +391,7 @@ const executeSubmit = () => {
                                 <label class="w-24 h-24 rounded-2xl border-2 border-dashed border-gray-200 dark:border-white/10 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 hover:border-geo-teal transition-all group/upload">
                                     <input type="file" multiple @change="handleFileChange" class="hidden" />
                                     <i class="fa-solid fa-cloud-arrow-up text-gray-300 dark:text-gray-600 group-hover/upload:text-geo-teal transition-colors mb-1"></i>
-                                    <span class="text-[8px] font-black uppercase tracking-tighter text-gray-400">Add Intel</span>
+                                    <span class="text-[8px] font-black uppercase tracking-tighter text-gray-400">Upload</span>
                                 </label>
                             </div>
                             <p class="text-[9px] font-bold text-geo-slate dark:text-gray-500 uppercase mt-6 opacity-60">{{ form.images.length }} FILES STAGED FOR UPLOAD</p>
@@ -401,7 +407,7 @@ const executeSubmit = () => {
                                 :disabled="form.processing || !isLocationInitialized || !isValidLocation" 
                                 class="w-full mt-6 bg-gradient-to-r from-geo-teal to-teal-400 text-geo-navy py-5 rounded-2xl font-black shadow-xl hover:brightness-110 active:scale-95 disabled:opacity-20 transition-all uppercase tracking-widest text-[10px] flex items-center justify-center gap-3">
                                 <i class="fa-solid fa-satellite-dish"></i>
-                                Transmit Entry
+                                Submit Survey
                             </button>
                         </div>
                     </div>

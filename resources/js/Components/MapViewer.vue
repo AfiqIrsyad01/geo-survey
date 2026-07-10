@@ -253,7 +253,39 @@ const captureSnapshot = () => {
 
 const getSnapshotDataUrl = () => {
     if (!map.value) return null;
-    return map.value.getCanvas().toDataURL('image/jpeg', 0.85);
+    
+    // Ensure the pinpoint is rendered on canvas for the export
+    if (props.modelValue && !map.value.getSource('snapshot-pin')) {
+        map.value.addSource('snapshot-pin', {
+            type: 'geojson',
+            data: {
+                type: 'Feature',
+                geometry: { type: 'Point', coordinates: [props.modelValue.lng, props.modelValue.lat] }
+            }
+        });
+        map.value.addLayer({
+            id: 'snapshot-pin-layer',
+            type: 'circle',
+            source: 'snapshot-pin',
+            paint: {
+                'circle-radius': 9,
+                'circle-color': '#0d9488',
+                'circle-stroke-width': 2,
+                'circle-stroke-color': '#ffffff'
+            }
+        });
+    } else if (props.modelValue && map.value.getSource('snapshot-pin')) {
+        map.value.getSource('snapshot-pin').setData({
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [props.modelValue.lng, props.modelValue.lat] }
+        });
+    }
+
+    // Force repaint before taking snapshot
+    map.value.triggerRepaint();
+
+    // Export as PNG to prevent dark/black backgrounds from transparency issues
+    return map.value.getCanvas().toDataURL('image/png');
 };
 
 const fetchElevation = async (lat, lng) => {
@@ -618,7 +650,7 @@ const renderBoundary = () => {
 
                 const popup = new maplibregl.Popup({ className: 'corporate-popup', offset: 10, maxWidth: '300px' })
                     .setLngLat(e.lngLat)
-                    .setHTML('<div class="p-4 text-xs font-bold text-geo-navy animate-pulse">Syncing Site Intelligence...</div>')
+                    .setHTML('<div class="p-4 text-xs font-bold text-geo-navy animate-pulse">Syncing Site Details...</div>')
                     .addTo(map.value);
 
                 let address = "Scanning Regional Operations Zone...";
@@ -646,7 +678,7 @@ const renderBoundary = () => {
                                 <p class="text-sm font-black text-geo-navy">${project.survey_count || 0} <span class="text-[10px] font-normal opacity-40">logs</span></p>
                             </div>
                              <div class="text-right">
-                                <p class="text-[8px] uppercase font-bold text-slate-400 tracking-tighter">Last Personnel</p>
+                                <p class="text-[8px] uppercase font-bold text-slate-400 tracking-tighter">Latest Submission</p>
                                 <p class="text-[11px] font-black text-geo-teal truncate">${project.latest_submitter || 'None'}</p>
                                 <p class="text-[9px] text-gray-400 italic">${project.latest_date || 'Awaiting Sync'}</p>
                             </div>
@@ -681,7 +713,7 @@ const renderBoundary = () => {
                         
                         <div class="flex justify-between items-center text-[8px] font-black text-slate-300 uppercase tracking-widest pt-2 border-t border-gray-50">
                             <span>Sector 0${project.id}</span>
-                            <span class="text-geo-teal">Active Node</span>
+                            <span class="text-geo-teal">Active</span>
                         </div>
                     </div>
                 `);
@@ -1061,7 +1093,7 @@ function handleManualSync() {
         <!-- Scanning Status Indicator -->
         <div v-if="isScanningLandmarks" class="absolute top-20 left-1/2 -translate-x-1/2 z-[41] bg-blue-600 text-white px-4 py-2 rounded-full shadow-2xl flex items-center gap-3 border border-white/20">
             <i class="fa-solid fa-radar fa-spin"></i>
-            <span class="text-[10px] font-black uppercase tracking-widest">Scanning Site Intelligence...</span>
+            <span class="text-[10px] font-black uppercase tracking-widest">Scanning Landmark...</span>
         </div>
 
         <!-- Landmarks Summary (Top Right) -->
@@ -1075,16 +1107,7 @@ function handleManualSync() {
             </button>
         </div>
 
-        <!-- Opacity Controller (Now in Bottom Right to avoid Scale Bar overlap) -->
-        <div v-if="props.boundary" class="absolute right-24 bottom-6 z-[40] bg-white/90 backdrop-blur-md p-2 rounded-2xl shadow-xl border border-gray-100 flex flex-row gap-3 items-center">
-            <i class="fa-solid fa-eye-low-beam text-geo-navy/40 text-[10px]"></i>
-            <input 
-                type="range" 
-                v-model="boundaryOpacity" 
-                min="0.0" max="0.8" step="0.1" 
-                class="w-24 h-1.5 appearance-none bg-geo-cyan/20 accent-geo-teal rounded-lg cursor-pointer"
-            >
-        </div>
+        
 
         <!-- Mouse Explorer (Balanced between zoom controls and search bar) -->
         <div class="absolute top-4 left-[64px] z-[40] bg-geo-navy/20 backdrop-blur-[2px] text-geo-navy/50 px-3 py-1 rounded-full text-[8px] font-mono pointer-events-none border border-geo-navy/10">
@@ -1092,7 +1115,7 @@ function handleManualSync() {
         </div>
 
         <!-- Measurement Readout -->
-        <div v-if="measurementMode" class="absolute top-4 left-[420px] z-[40] bg-white/90 backdrop-blur-sm border border-red-100 rounded-2xl px-4 py-2 shadow-2xl flex items-center gap-3">
+        <div v-if="measurementMode" class="absolute top-4 left-[600px] z-[40] bg-white/90 backdrop-blur-sm border border-red-100 rounded-2xl px-4 py-2 shadow-2xl flex items-center gap-3">
             <div class="p-2 bg-red-100 text-red-600 rounded-xl">
                 <i class="fa-solid fa-vector-square"></i>
             </div>

@@ -4,6 +4,7 @@ import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
+import CustomSelect from '@/Components/CustomSelect.vue';
 import { Head, Link, useForm, router } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 
@@ -187,7 +188,7 @@ const getRoleIcon = (role) => {
                         <span>Back to Dashboard</span>
                     </Link>
                     <button @click="openAddForm" class="bg-geo-teal text-geo-navy px-6 py-2.5 rounded-xl text-sm font-bold shadow-lg hover:brightness-110 active:scale-95 transition-all">
-                        + Initialize Personnel
+                        + Register Personnel
                     </button>
                 </div>
             </div>
@@ -212,7 +213,7 @@ const getRoleIcon = (role) => {
                             <i class="fa-solid fa-user-check fa-xl"></i>
                         </div>
                         <div>
-                            <p class="text-xs font-black text-geo-slate dark:text-gray-400 uppercase tracking-widest transition-colors">Active Clearance</p>
+                            <p class="text-xs font-black text-geo-slate dark:text-gray-400 uppercase tracking-widest transition-colors">Active Users</p>
                             <p class="text-2xl font-black text-geo-navy dark:text-white transition-colors">{{ stats.active }}</p>
                         </div>
                     </div>
@@ -221,7 +222,7 @@ const getRoleIcon = (role) => {
                             <i class="fa-solid fa-hard-hat fa-xl"></i>
                         </div>
                         <div>
-                            <p class="text-xs font-black text-geo-slate dark:text-gray-400 uppercase tracking-widest transition-colors">Field Operators</p>
+                            <p class="text-xs font-black text-geo-slate dark:text-gray-400 uppercase tracking-widest transition-colors">Field Staff</p>
                             <p class="text-2xl font-black text-geo-navy dark:text-white transition-colors">{{ stats.staff }}</p>
                         </div>
                     </div>
@@ -254,11 +255,16 @@ const getRoleIcon = (role) => {
 
                                 <div>
                                     <InputLabel for="role" value="Access Clearance" class="text-[10px] font-black uppercase text-geo-slate dark:text-gray-400 tracking-[0.2em] transition-colors" />
-                                    <select id="role" v-model="form.role" class="mt-1 block w-full border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-white/5 text-geo-navy dark:text-white focus:ring-geo-teal focus:border-geo-teal rounded-xl text-sm transition-colors" required>
-                                        <option value="staff" class="dark:bg-geo-navy">Field Staff</option>
-                                        <option value="hod" class="dark:bg-geo-navy">HOD (Approval Authority)</option>
-                                        <option value="admin" class="dark:bg-geo-navy">System Administrator</option>
-                                    </select>
+                                    <CustomSelect 
+                                        id="role" 
+                                        v-model="form.role" 
+                                        :options="[
+                                            { value: 'staff', label: 'Field Staff' },
+                                            { value: 'hod', label: 'HOD (Approval Authority)' },
+                                            { value: 'admin', label: 'System Administrator' }
+                                        ]"
+                                        customClass="mt-1 block w-full border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-white/5 text-geo-navy dark:text-white rounded-xl text-xs py-2.5 transition-colors" 
+                                    />
                                     <InputError class="mt-2" :message="form.errors.role" />
                                 </div>
 
@@ -297,7 +303,7 @@ const getRoleIcon = (role) => {
                                         :class="{ 'opacity-25': form.processing || emailExists || (!editingUser && (form.password.length < 8 || !/[0-9]/.test(form.password) || !/[!@#$%^&*(),.?\':{}|<>]/.test(form.password) || form.password !== form.password_confirmation)) }" 
                                         :disabled="form.processing || emailExists || (!editingUser && (form.password.length < 8 || !/[0-9]/.test(form.password) || !/[!@#$%^&*(),.?\':{}|<>]/.test(form.password) || form.password !== form.password_confirmation))"
                                     >
-                                        {{ editingUser ? 'Update Records' : 'Initialize Identity' }}
+                                        {{ editingUser ? 'Update Records' : 'Register' }}
                                     </PrimaryButton>
                                 </div>
                             </form>
@@ -310,7 +316,7 @@ const getRoleIcon = (role) => {
                     <div class="p-6 border-b border-gray-50 dark:border-white/5 flex justify-between items-center transition-colors">
                         <h3 class="font-black text-geo-navy dark:text-white transition-colors">Operational User Registry</h3>
                         <div class="flex gap-2">
-                             <div class="px-3 py-1 bg-green-50 dark:bg-green-900/10 text-green-700 dark:text-green-400 text-[10px] font-black uppercase rounded-full border border-green-100 dark:border-green-900/20 transition-colors">Live Connection</div>
+                             
                         </div>
                     </div>
                     
@@ -319,7 +325,7 @@ const getRoleIcon = (role) => {
                             <thead class="bg-gray-50/50 dark:bg-white/5 text-[10px] font-black text-geo-slate dark:text-gray-400 uppercase tracking-widest transition-colors">
                                 <tr>
                                     <th class="px-6 py-4">Identity</th>
-                                    <th class="px-6 py-4">Clearance</th>
+                                    <th class="px-6 py-4">Role</th>
                                     <th class="px-6 py-4">Status</th>
                                     <th class="px-6 py-4 text-right">Operations</th>
                                 </tr>

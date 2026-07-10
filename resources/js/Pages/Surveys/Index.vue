@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import CustomSelect from '@/Components/CustomSelect.vue';
 import { Head, Link } from '@inertiajs/vue3';
 
 const props = defineProps({
@@ -63,13 +64,17 @@ const resetFilters = () => {
                         <input v-model="searchQuery" type="text" placeholder="Search project or personnel..." class="w-full pl-12 pr-4 py-3 rounded-2xl border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-white/5 focus:ring-geo-teal focus:border-geo-teal text-sm text-geo-navy dark:text-white transition-all" />
                     </div>
                     
-                    <div class="flex items-center gap-3 w-full md:w-auto">
-                        <select v-model="filterStatus" class="rounded-2xl border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-white/5 focus:ring-geo-teal text-sm text-geo-slate dark:text-gray-400 py-3 transition-all">
-                            <option value="">All Statuses</option>
-                            <option value="pending">Pending</option>
-                            <option value="approved">Approved</option>
-                            <option value="rejected">Rejected</option>
-                        </select>
+                    <div class="flex items-center gap-3 w-full md:w-auto z-10">
+                        <CustomSelect 
+                            v-model="filterStatus" 
+                            :options="[
+                                { value: '', label: 'All Statuses' },
+                                { value: 'pending', label: 'Pending' },
+                                { value: 'approved', label: 'Approved' },
+                                { value: 'rejected', label: 'Rejected' }
+                            ]"
+                            customClass="rounded-2xl border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-white/5 text-xs font-bold text-geo-slate dark:text-gray-400 py-2.5 transition-all min-w-[140px]"
+                        />
                         <input v-model="filterDate" type="date" class="rounded-2xl border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-white/5 focus:ring-geo-teal text-sm text-geo-slate dark:text-gray-400 py-3 transition-all" />
                         <button @click="resetFilters" class="p-3 rounded-2xl bg-white dark:bg-white/5 border border-gray-100 dark:border-white/10 text-geo-slate dark:text-gray-400 hover:text-geo-teal dark:hover:text-geo-teal hover:border-geo-teal transition-all group" title="Reset Filters">
                             <i class="fa-solid fa-rotate-right text-xs group-active:rotate-180 transition-transform duration-500"></i>
@@ -83,8 +88,8 @@ const resetFilters = () => {
                         <thead class="bg-gray-50 dark:bg-white/5 uppercase text-[10px] font-black tracking-widest text-geo-slate dark:text-gray-400 transition-colors">
                             <tr>
                                 <th class="px-6 py-4 text-left">Code</th>
-                                <th class="px-6 py-4 text-left">Project Target</th>
-                                <th class="px-6 py-4 text-left">Field Personnel</th>
+                                <th class="px-6 py-4 text-left">Project</th>
+                                <th class="px-6 py-4 text-left">Assigned Staff</th>
                                 <th class="px-6 py-4 text-left">Audit Status</th>
                                 <th class="px-6 py-4 text-left">Log Date</th>
                                 <th class="px-6 py-4 text-right">Operations</th>

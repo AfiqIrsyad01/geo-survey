@@ -271,7 +271,7 @@
 
     <div class="overview-strip">
         <div class="metric-cell">
-            <span class="metric-label">Deployment Status</span>
+            <span class="metric-label">Survey Status</span>
             <span class="metric-value">
                 <span class="status-badge status-{{ $survey->status }}">
                     {{ $survey->status }}
@@ -279,11 +279,11 @@
             </span>
         </div>
         <div class="metric-cell">
-            <span class="metric-label">Temporal Signature</span>
+            <span class="metric-label">Date of Submission</span>
             <span class="metric-value">{{ $survey->created_at->format('d M Y') }}</span>
         </div>
         <div class="metric-cell">
-            <span class="metric-label">Node Integrity</span>
+            <span class="metric-label">Evidence Integrity</span>
             <span class="metric-value">
                 @php 
                     $verified = $survey->images->every(fn($img) => ($img->metadata['is_verified'] ?? true));
@@ -357,14 +357,14 @@
     </div>
 
     @if($options['include_map'])
-    <div class="section">
+    <div class="section" style="page-break-before: always;">
         <div class="section-title">Spatial Origin & Precision</div>
         
         @if(isset($options['map_image']) && $options['map_image'])
         <div style="margin-bottom: 20px; border: 2px solid #0a192f; border-radius: 12px; overflow: hidden; page-break-inside: avoid;">
             <img src="{{ $options['map_image'] }}" style="width: 100%; display: block; border-bottom: 2px solid #0a192f;">
             <div style="background: #0a192f; color: #4fd1c5; font-size: 8px; font-weight: bold; text-align: center; padding: 4px; text-transform: uppercase; letter-spacing: 2px;">
-                Secured Spatial Snapshot (MapLibre Engine Core)
+                Secured Snapshot (MapLibre GSSEngine)
             </div>
         </div>
         @endif

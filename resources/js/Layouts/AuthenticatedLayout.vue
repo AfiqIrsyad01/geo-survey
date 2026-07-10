@@ -359,7 +359,7 @@ onUnmounted(() => {
                                 </NavLink>
                                 <NavLink v-if="$page.props.auth.user.role === 'admin'" :href="route('register')" :active="route().current('register')" class="flex items-center gap-2">
                                     <i class="fa-solid fa-users-gear text-amber-500"></i>
-                                    Manage Personnel
+                                    Personnel Management
                                 </NavLink>
                                 <NavLink v-if="$page.props.auth.user.role === 'admin'" :href="route('admin.reports')" :active="route().current('admin.reports')" class="flex items-center gap-2">
                                     <i class="fa-solid fa-file-invoice-dollar text-emerald-500"></i>

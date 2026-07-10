@@ -1,6 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import MapViewer from '@/Components/MapViewer.vue';
+import CustomSelect from '@/Components/CustomSelect.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
 
@@ -8,37 +8,6 @@ const props = defineProps({
     stats: Object,
     projects: Array
 });
-
-const spatialIntelligence = ref(null);
-const isLoadingAnalytics = ref(false);
-const selectedAnalyticsProject = ref(null);
-const mapViewerRef = ref(null);
-
-const fetchSpatialIntelligence = async () => {
-    isLoadingAnalytics.value = true;
-    try {
-        const response = await fetch(route('api.analytics.spatial'));
-        spatialIntelligence.value = await response.json();
-    } catch (e) {
-        console.error("Spatial Intelligence Error:", e);
-    } finally {
-        isLoadingAnalytics.value = false;
-    }
-};
-
-const flyToAnalyticsProject = () => {
-    if (!selectedAnalyticsProject.value) {
-        if (mapViewerRef.value) {
-            mapViewerRef.value.fitToGlobalContext();
-        }
-        return;
-    }
-    const project = props.projects.find(p => p.id == selectedAnalyticsProject.value);
-    if (project && project.boundary && mapViewerRef.value) {
-        mapViewerRef.value.flyToBoundary(project.boundary);
-    }
-};
-
 const selectedMonth = ref(props.stats.selected_month || new Date().getMonth() + 1);
 const selectedYear = ref(props.stats.selected_year || new Date().getFullYear());
 
@@ -180,7 +149,6 @@ function initializeCharts() {
 
 onMounted(() => {
     initializeCharts();
-    fetchSpatialIntelligence();
     window.addEventListener('gss-theme-changed', initializeCharts);
 });
 
@@ -217,8 +185,8 @@ watch(() => props.stats, () => {
                     </div>
                     <div class="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
                         <div>
-                            <h3 class="text-xl font-bold mb-2">Automated Monthly Governance Report</h3>
-                            <p class="text-gray-300 dark:text-gray-400 text-sm max-w-md transition-colors">Compile all field activities, spatial validations, and audit outcomes into a standardized corporate PDF document.</p>
+                            <h3 class="text-xl font-bold mb-2">Generate Monthly Governance Report</h3>
+                            <p class="text-gray-300 dark:text-gray-400 text-sm max-w-md transition-colors">Compile all field activities, spatial validations and audit outcomes into a standardized corporate PDF document.</p>
                             
                             <!-- Customizer Toggles -->
                             <div class="mt-6 flex flex-wrap gap-4">
@@ -238,71 +206,36 @@ watch(() => props.stats, () => {
                         </div>
 
                         <div class="flex flex-col sm:flex-row items-center gap-4 bg-white/5 p-6 rounded-3xl backdrop-blur-md border border-white/10 w-full lg:w-auto">
-                            <div class="flex gap-2 w-full sm:w-auto">
-                                <select v-model="selectedMonth" class="bg-transparent border-white/20 rounded-xl text-sm font-bold focus:ring-geo-teal w-full">
-                                    <option v-for="m in months" :key="m.id" :value="m.id" class="text-geo-navy">{{ m.name }}</option>
-                                </select>
-                                <select v-model="selectedYear" class="bg-transparent border-white/20 rounded-xl text-sm font-bold focus:ring-geo-teal w-full">
-                                    <option v-for="y in years" :key="y" :value="y" class="text-geo-navy">{{ y }}</option>
-                                </select>
+                            <div class="flex gap-2 w-full sm:w-auto z-10 relative">
+                                <CustomSelect 
+                                    v-model="selectedMonth" 
+                                    :options="months.map(m => ({ value: m.id, label: m.name }))"
+                                    customClass="bg-transparent border-white/20 rounded-xl text-xs font-bold w-full !text-white"
+                                />
+                                <CustomSelect 
+                                    v-model="selectedYear" 
+                                    :options="years.map(y => ({ value: y, label: y.toString() }))"
+                                    customClass="bg-transparent border-white/20 rounded-xl text-xs font-bold w-full !text-white"
+                                />
                             </div>
                             <a 
                                 :href="stats.total_surveys > 0 ? route('reports.monthly', { month: selectedMonth, year: selectedYear, trends: reportOptions.trends, distribution: reportOptions.distribution, registry: reportOptions.registry }) : '#'" 
+                                :target="stats.total_surveys > 0 ? '_blank' : null"
                                 :class="stats.total_surveys > 0 ? 'bg-geo-teal text-geo-navy hover:brightness-110 shadow-lg shadow-geo-teal/20' : 'bg-gray-500 text-gray-300 cursor-not-allowed opacity-50'"
                                 class="px-8 py-3 rounded-2xl text-xs font-black transition-all uppercase tracking-widest whitespace-nowrap w-full sm:w-auto text-center"
                             >
                                 <i class="fa-solid fa-file-pdf mr-2"></i>
-                                {{ stats.total_surveys > 0 ? 'Download Report' : 'No Data' }}
+                                {{ stats.total_surveys > 0 ? 'Generate' : 'No Data' }}
                             </a>
                         </div>
                     </div>
                 </div>
-
-                <!-- Strategic Heatmap Intelligence (Phase 6) -->
-                <div class="bg-[var(--geo-surface)] p-2 rounded-[2rem] shadow-2xl border border-[var(--geo-border)] relative overflow-hidden transition-all duration-500">
-                    <div class="h-[500px] w-full relative">
-                        <MapViewer 
-                            ref="mapViewerRef"
-                            v-if="spatialIntelligence"
-                            :heatmapData="spatialIntelligence"
-                            :projects="projects"
-                            :readOnly="true" 
-                        />
-                        <div v-else class="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 dark:bg-geo-navy/40 backdrop-blur-sm z-50">
-                            <i class="fa-solid fa-satellite-dish text-geo-teal text-4xl animate-pulse mb-4"></i>
-                            <p class="text-xs font-black uppercase text-geo-navy dark:text-gray-300 tracking-widest">Synchronizing Global Intelligence...</p>
-                        </div>
-
-                        <!-- Tactical Sector Selector -->
-                        <div class="absolute top-6 left-20 z-[100] flex gap-2">
-                             <select v-model="selectedAnalyticsProject" @change="flyToAnalyticsProject" class="bg-white/90 dark:bg-geo-navy/90 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl px-5 py-3 text-[10px] font-black uppercase tracking-widest text-geo-navy dark:text-geo-teal shadow-2xl focus:ring-2 focus:ring-geo-teal outline-none transition-all">
-                                <option :value="null">GLOBAL THEATER OVERVIEW</option>
-                                <option v-for="project in projects" :key="project.id" :value="project.id">Focus: {{ project.name }}</option>
-                             </select>
-                        </div>
-
-                        <!-- Map Overlay Info -->
-                        <div class="absolute bottom-6 left-20 z-[100] bg-geo-navy/90 backdrop-blur-md p-4 rounded-2xl border border-white/10 shadow-2xl max-w-[240px]">
-                            <h5 class="text-[10px] font-black text-geo-teal uppercase tracking-widest mb-2">Regional Heat Extraction</h5>
-                            <p class="text-[11px] text-white/80 leading-relaxed font-medium">Visualizing spatial density based on all historic survey nodes. Warmer zones indicate high operational concentration.</p>
-                            <div class="mt-4 flex items-center gap-3">
-                                <div class="flex -space-x-2">
-                                    <div class="w-6 h-6 rounded-full bg-red-500 border-2 border-geo-navy"></div>
-                                    <div class="w-6 h-6 rounded-full bg-orange-400 border-2 border-geo-navy"></div>
-                                    <div class="w-6 h-6 rounded-full bg-blue-400 border-2 border-geo-navy"></div>
-                                </div>
-                                <span class="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Intensity Scale</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Strategic Charts -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <!-- Trends -->
                     <div class="bg-[var(--geo-surface)] p-8 rounded-3xl shadow-sm border border-[var(--geo-border)] h-[450px] flex flex-col transition-colors duration-500">
                         <div class="flex justify-between items-center mb-6">
-                            <h4 class="font-bold text-geo-navy dark:text-white uppercase tracking-widest text-xs transition-colors">Submission Velocity (12 Months)</h4>
+                            <h4 class="font-bold text-geo-navy dark:text-white uppercase tracking-widest text-xs transition-colors">Submission Analytics</h4>
                             
                         </div>
                         <div class="flex-1">
@@ -312,7 +245,7 @@ watch(() => props.stats, () => {
 
                     <!-- Status Distribution -->
                     <div class="bg-[var(--geo-surface)] p-8 rounded-3xl shadow-sm border border-[var(--geo-border)] h-[450px] flex flex-col items-center transition-colors duration-500">
-                        <h4 class="font-bold text-geo-navy dark:text-white uppercase tracking-widest text-xs w-full mb-6 transition-colors">Audit Integrity Distribution</h4>
+                        <h4 class="font-bold text-geo-navy dark:text-white uppercase tracking-widest text-xs w-full mb-6 transition-colors">Audit Survey Status</h4>
                         <div class="flex-1 w-full max-w-[300px]">
                             <canvas id="statusChart"></canvas>
                         </div>
@@ -336,8 +269,8 @@ watch(() => props.stats, () => {
                 <!-- Top Personnel Table -->
                 <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
                     <div class="p-8 border-b border-gray-50 flex justify-between items-center">
-                        <h4 class="font-bold text-geo-navy uppercase tracking-widest text-xs">High-Performance Personnel Units</h4>
-                        <span class="text-[10px] font-bold text-geo-slate uppercase bg-gray-50 px-3 py-1 rounded-full">Top 5 Units</span>
+                        <h4 class="font-bold text-geo-navy uppercase tracking-widest text-xs">Personnel Units</h4>
+                        <span class="text-[10px] font-bold text-geo-slate uppercase bg-gray-50 px-3 py-1 rounded-full">Top 5</span>
                     </div>
                     <table class="w-full text-left">
                         <thead class="bg-gray-50/50 text-[10px] font-black uppercase text-geo-slate tracking-widest">

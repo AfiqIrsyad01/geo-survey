@@ -3,6 +3,7 @@ import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MapViewer from '@/Components/MapViewer.vue';
+import CustomSelect from '@/Components/CustomSelect.vue';
 import * as turf from '@turf/turf';
 
 const props = defineProps({
@@ -16,6 +17,26 @@ const props = defineProps({
 });
 
 const focusedProjectId = ref(null);
+
+const isHeatmapActive = ref(false);
+const spatialIntelligence = ref(null);
+const isLoadingHeatmap = ref(false);
+
+const toggleHeatmap = async () => {
+    isHeatmapActive.value = !isHeatmapActive.value;
+    
+    if (isHeatmapActive.value && !spatialIntelligence.value) {
+        isLoadingHeatmap.value = true;
+        try {
+            const response = await fetch(route('api.analytics.spatial'));
+            spatialIntelligence.value = await response.json();
+        } catch (e) {
+            console.error("Spatial Intelligence Error:", e);
+        } finally {
+            isLoadingHeatmap.value = false;
+        }
+    }
+};
 
 const markAsRead = (surveyId) => {
     if (!props.unread_notifications) return;
@@ -91,12 +112,12 @@ const rolePersona = computed(() => {
     if (role === 'admin') {
         return {
             title: 'Strategic Oversight Console',
-            subtitle: 'Total system governance and asset lifecycle management.',
+            subtitle: 'Full Access System',
             banner: 'bg-gradient-to-br from-slate-900 via-geo-navy to-amber-950/40',
             accent: 'text-amber-400',
             glow: 'after:bg-amber-500/10',
-            trendLabel: 'Network Submission Velocity',
-            statusLabel: 'Global Integrity Matrix',
+            trendLabel: 'Global Submission Survey',
+            statusLabel: 'Global Reports Count',
             feedTitle: 'Operational Command Feed',
             cardAccent: 'border-amber-500/10 hover:border-amber-500/40 hover:shadow-amber-500/5',
             metricColor: 'text-amber-500',
@@ -105,12 +126,12 @@ const rolePersona = computed(() => {
     } else if (role === 'hod') {
         return {
             title: 'Compliance Regulation Hub',
-            subtitle: 'Operational integrity oversight and technical validation.',
+            subtitle: 'Validation of Surveys.',
             banner: 'bg-gradient-to-br from-emerald-950 via-geo-navy to-slate-900',
             accent: 'text-emerald-400',
             glow: 'after:bg-emerald-500/10',
-            trendLabel: 'Operational Throughput',
-            statusLabel: 'Review Distribution Profile',
+            trendLabel: 'Submission Analytics',
+            statusLabel: 'Surveys Count',
             feedTitle: 'Technical Validation Queue',
             cardAccent: 'border-emerald-500/10 hover:border-emerald-500/40 hover:shadow-emerald-500/5',
             metricColor: 'text-emerald-500',
@@ -119,7 +140,7 @@ const rolePersona = computed(() => {
     } else {
         return {
             title: 'Personnel Operational Hub',
-            subtitle: 'Field activity tracking and personal evidence repository.',
+            subtitle: 'Submission of Surveys',
             banner: 'bg-gradient-to-br from-slate-900 via-geo-navy to-geo-teal/30',
             accent: 'text-geo-teal',
             glow: 'after:bg-geo-teal/10',
@@ -151,7 +172,7 @@ const initializeCharts = () => {
             data: {
                 labels: props.chart_data.monthly.map(d => d.month || 'Unknown'),
                 datasets: [{
-                    label: 'Intelligence Logs',
+                    label: 'Survey Count',
                     data: props.chart_data.monthly.map(d => d.count || 0),
                     backgroundColor: isDark ? (userRole.value === 'admin' ? '#fbbf24' : (userRole.value === 'hod' ? '#10b981' : '#14b8a6')) : '#0d9488',
                     borderRadius: 12,
@@ -229,17 +250,17 @@ const statItems = computed(() => {
     const stats = props.stats || {};
     const baseStats = [
         { name: 'Operational Zones', value: stats.active_projects || 0, svg: '<path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />', color: 'text-blue-500' },
-        { name: userRole.value === 'staff' ? 'Personal Logs' : 'Total Intelligence', value: stats.total_surveys || 0, svg: '<path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />', color: 'text-indigo-500' },
+        { name: userRole.value === 'staff' ? 'Personal Surveys' : 'Total Surveys', value: stats.total_surveys || 0, svg: '<path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />', color: 'text-indigo-500' },
     ];
 
     if (userRole.value === 'admin') {
-        baseStats.push({ name: 'Personnel Units', value: stats.staff_count || 0, svg: '<path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />', color: 'text-geo-teal' });
+        baseStats.push({ name: 'Staff Units', value: stats.staff_count || 0, svg: '<path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />', color: 'text-geo-teal' });
         baseStats.push({ name: 'Most Active Zone', value: stats.top_zone || 'N/A', svg: '<path d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />', color: 'text-yellow-500' });
     } else if (userRole.value === 'hod') {
         baseStats.push({ name: 'Pending Review', value: stats.pending_approvals || 0, svg: '<path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />', color: 'text-red-500' });
         baseStats.push({ name: 'Most Active Zone', value: stats.top_zone || 'N/A', svg: '<path d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />', color: 'text-green-500' });
     } else {
-        baseStats.push({ name: 'Awaiting Audit', value: stats.user_pending || 0, svg: '<path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />', color: 'text-orange-500' });
+        baseStats.push({ name: 'Awaiting Review', value: stats.user_pending || 0, svg: '<path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />', color: 'text-orange-500' });
         baseStats.push({ name: 'Primary Operation Zone', value: stats.top_zone || 'N/A', svg: '<path d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />', color: 'text-emerald-500' });
     }
 
@@ -280,25 +301,15 @@ const hodCuratedFeed = computed(() => {
                             </span>
                            
                         </div>
-                        <h2 class="font-black text-4xl lg:text-5xl tracking-tight mb-2 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/70">
+                        <h2 class="relative -top-2 font-black text-4xl lg:text-5xl tracking-tight mb-3 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/70">
                             {{ rolePersona.title }}
                         </h2>
                         <p class="text-white/60 font-medium italic text-sm lg:text-lg max-w-2xl">
-                            Operation Authorization: <span :class="rolePersona.accent" class="font-black px-2 py-0.5 bg-white/5 rounded-lg border border-white/5 mx-1">{{ $page.props.auth.user.name }}</span>. {{ rolePersona.subtitle }}
+                            Authorization by : <span :class="rolePersona.accent" class="font-black px-2 py-0.5 bg-white/5 rounded-lg border border-white/5 mx-1">{{ $page.props.auth.user.name }}</span>. {{ rolePersona.subtitle }}
                         </p>
                     </div>
                     
-                    <div class="flex flex-col sm:flex-row items-center gap-4 bg-black/20 p-6 rounded-[2rem] border border-white/5 backdrop-blur-md">
-                        <Link v-if="userRole === 'admin'" :href="route('projects.index')" 
-                            class="group relative overflow-hidden bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-2xl text-[10px] font-black tracking-[0.2em] transition-all uppercase border border-white/10 w-full sm:w-auto text-center">
-                            Zone Oversight
-                        </Link>
-                        <Link :href="route('surveys.create')" 
-                            :class="rolePersona.btnClass"
-                            class="px-10 py-4 rounded-2xl text-[10px] font-black shadow-2xl hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-[0.2em] w-full sm:w-auto text-center">
-                            + Initialize Log
-                        </Link>
-                    </div>
+                    
                 </div>
             </div>
         </template>
@@ -312,7 +323,7 @@ const hodCuratedFeed = computed(() => {
                         <svg class="h-6 w-6 text-red-500 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
-                        <span class="text-red-800 dark:text-red-300 font-bold">You have {{ stats.pending_approvals }} site surveys awaiting technical approval.</span>
+                        <span class="text-red-800 dark:text-red-300 font-bold">You have {{ stats.pending_approvals }} site surveys awaiting approval.</span>
                     </div>
                     <Link :href="route('surveys.index', { status: 'pending' })" class="text-red-700 dark:text-red-400 font-bold text-sm underline hover:text-red-800">Clear Queue →</Link>
                 </div>
@@ -353,7 +364,7 @@ const hodCuratedFeed = computed(() => {
                         <div class="flex justify-between items-center mb-8">
                             <div>
                                 <h3 class="text-xl font-black text-geo-navy dark:text-white transition-colors">{{ rolePersona.trendLabel }}</h3>
-                                <p class="text-[10px] text-geo-slate dark:text-gray-400 font-bold uppercase tracking-widest mt-1">Institutional submission velocity index</p>
+                                <p class="text-[10px] text-geo-slate dark:text-gray-400 font-bold uppercase tracking-widest mt-1">By Month</p>
                             </div>
                             
                         </div>
@@ -366,7 +377,7 @@ const hodCuratedFeed = computed(() => {
                     <div class="bg-[var(--geo-surface)] p-8 rounded-[2.5rem] shadow-sm border border-[var(--geo-border)] transition-colors duration-500">
                         <div class="mb-8">
                             <h3 class="text-xl font-black text-geo-navy dark:text-white transition-colors">{{ rolePersona.statusLabel }}</h3>
-                            <p class="text-[10px] text-geo-slate dark:text-gray-400 font-bold uppercase tracking-widest mt-1 italic">Audit Integrity Spectrum</p>
+                            <p class="text-[10px] text-geo-slate dark:text-gray-400 font-bold uppercase tracking-widest mt-1 italic">By Status</p>
                         </div>
                         <div class="h-72 relative">
                             <canvas id="statusDistChart"></canvas>
@@ -388,19 +399,28 @@ const hodCuratedFeed = computed(() => {
                         <div class="absolute inset-0 border-[8px] border-[var(--geo-surface)] rounded-[2rem] pointer-events-none z-10"></div>
                         <div class="p-5 flex justify-between items-center relative z-20">
                             <div>
-                                <h3 class="text-lg font-black text-geo-navy dark:text-white transition-colors">Digital Twin Viewport</h3>
-                                <p class="text-[9px] text-geo-slate dark:text-gray-400 font-bold uppercase tracking-widest mt-0.5">Live Geospatial Asset Telemetry</p>
+                                <h3 class="text-lg font-black text-geo-navy dark:text-white transition-colors">Global Map View</h3>
+                                <p class="text-[9px] text-geo-slate dark:text-gray-400 font-bold uppercase tracking-widest mt-0.5">Live Geospatial Coordinate</p>
                             </div>
                             <div class="flex items-center gap-3">
+                                <!-- Heatmap Toggle -->
+                                <button 
+                                    @click="toggleHeatmap"
+                                    :class="isHeatmapActive ? 'bg-geo-teal text-white shadow-lg shadow-geo-teal/20' : 'bg-black/5 dark:bg-white/5 text-geo-slate hover:bg-black/10 dark:hover:bg-white/10'"
+                                    class="px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-transparent dark:border-white/5 flex items-center gap-2"
+                                    :disabled="isLoadingHeatmap"
+                                >
+                                    <i class="fa-solid" :class="isLoadingHeatmap ? 'fa-circle-notch fa-spin' : 'fa-fire'"></i>
+                                    {{ isLoadingHeatmap ? 'Syncing...' : 'Heatmap' }}
+                                </button>
+                                
                                 <div class="bg-black/10 dark:bg-white/5 p-1 rounded-xl border border-white/5 backdrop-blur-md flex items-center shadow-inner">
-                                    <span class="text-[8px] font-black text-geo-slate dark:text-gray-400 uppercase tracking-widest px-3">Filter:</span>
-                                    <select 
+                                    <span class="text-[8px] font-black text-geo-slate dark:text-gray-400 uppercase tracking-widest px-3">View:</span>
+                                    <CustomSelect 
                                         v-model="focusedProjectId"
-                                        class="text-[9px] bg-white dark:bg-geo-navy border-none rounded-lg py-1.5 px-3 font-black text-geo-navy dark:text-white focus:ring-1 focus:ring-geo-teal transition-all outline-none min-w-[140px] cursor-pointer shadow-sm"
-                                    >
-                                        <option :value="null">{{ userRole === 'staff' ? 'PERSONAL SECTOR VIEW' : 'GLOBAL FLEET VIEW' }}</option>
-                                        <option v-for="p in projects_spatial" :key="p.id" :value="p.id">{{ p.name.toUpperCase() }}</option>
-                                    </select>
+                                        :options="[{ value: null, label: userRole === 'staff' ? 'SECTOR VIEW' : 'GLOBAL VIEW' }, ...projects_spatial.map(p => ({ value: p.id, label: p.name.toUpperCase() }))]"
+                                        customClass="text-[9px] border-none py-1.5 px-3 min-w-[140px] shadow-sm bg-transparent dark:bg-transparent"
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -410,6 +430,7 @@ const hodCuratedFeed = computed(() => {
                                 :projects="projects_spatial" 
                                 :focusProject="focusedProjectId" 
                                 :modelValue="focusedProjectLocation"
+                                :heatmapData="isHeatmapActive && spatialIntelligence ? spatialIntelligence : { type: 'FeatureCollection', features: [] }"
                             />
                         </div>
                     </div>
@@ -422,15 +443,7 @@ const hodCuratedFeed = computed(() => {
                                     <span :class="userRole === 'admin' ? 'bg-amber-500' : (userRole === 'hod' ? 'bg-emerald-500' : 'bg-geo-teal')" class="w-2 h-2 rounded-full mr-2.5 shadow-lg shadow-current"></span>
                                     Audit Feed
                                 </h3>
-                                <div v-if="userRole === 'staff'" class="bg-gray-100 dark:bg-white/5 p-1 rounded-lg">
-                                    <select 
-                                        v-model="focusedProjectId"
-                                        class="text-[8px] bg-transparent border-none py-0.5 px-2 font-black text-geo-navy dark:text-white outline-none max-w-[80px] truncate cursor-pointer"
-                                    >
-                                        <option :value="null">Fleet</option>
-                                        <option v-for="p in projects_spatial" :key="p.id" :value="p.id">{{ p.name.toUpperCase() }}</option>
-                                    </select>
-                                </div>
+                                
                             </div>
                             
                             <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3">
@@ -488,7 +501,7 @@ const hodCuratedFeed = computed(() => {
                             </div>
 
                             <Link :href="route('surveys.index')" class="block text-center mt-6 py-3 rounded-xl text-[8px] font-black text-geo-slate dark:text-geo-teal bg-gray-50 dark:bg-white/5 border border-transparent hover:border-geo-teal/20 transition-all uppercase tracking-[0.2em]">
-                                Full Registry
+                                More Surveys
                             </Link>
                         </div>
 
@@ -496,8 +509,8 @@ const hodCuratedFeed = computed(() => {
                         <div v-if="userRole === 'admin'" class="bg-[var(--geo-surface)] p-6 rounded-[2rem] shadow-sm border border-[var(--geo-border)] transition-colors duration-500 flex flex-col">
                             <div class="flex justify-between items-center mb-5">
                                 <div>
-                                    <h3 class="text-[10px] font-black text-geo-navy dark:text-white uppercase tracking-widest transition-colors">Top Tactical Units</h3>
-                                    <p class="text-[7.5px] text-geo-slate dark:text-gray-500 font-bold uppercase tracking-tight mt-0.5">High-Velocity Operations</p>
+                                    <h3 class="text-[10px] font-black text-geo-navy dark:text-white uppercase tracking-widest transition-colors">Most Active Staff</h3>
+                                    
                                 </div>
                                 <i class="fa-solid fa-trophy text-amber-500 text-[10px]"></i>
                             </div>
@@ -515,8 +528,8 @@ const hodCuratedFeed = computed(() => {
                                         <p class="font-black text-geo-navy dark:text-white text-[9px] truncate transition-colors">{{ user.name }}</p>
                                         <div class="flex items-center gap-2">
                                             <p class="text-[7px] font-bold text-geo-slate dark:text-gray-500 uppercase tracking-tighter">{{ user.surveys_count || 0 }} Submissions</p>
-                                            <div class="w-1 h-1 rounded-full bg-geo-teal/30"></div>
-                                            <span class="text-[6.5px] font-black text-geo-teal uppercase">Active</span>
+                                            
+                                            
                                         </div>
                                     </div>
                                 </div>

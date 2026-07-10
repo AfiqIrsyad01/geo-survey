@@ -363,7 +363,7 @@ function submit() {
             <div class="flex justify-between items-center">
                 <h2 class="font-black text-2xl text-geo-navy dark:text-white leading-tight">Reconfigure Operation Zone: {{ project.name }}</h2>
                 <Link :href="route('projects.index')" class="text-geo-slate dark:text-gray-400 text-sm font-bold hover:text-geo-navy dark:hover:text-white transition-all decoration-dotted underline underline-offset-4">
-                    ← Return to Registry
+                    ← Return
                 </Link>
             </div>
         </template>
@@ -401,7 +401,7 @@ function submit() {
                         </div>
                     </div>
 
-                    <div v-if="points.length >= 3" class="absolute bottom-6 right-6 z-[1000] flex gap-2">
+                    <div v-if="points.length >= 3" class="absolute bottom-6 right-12 z-[1000] flex gap-2">
                         <div :class="isSimple ? 'bg-geo-teal text-geo-navy' : 'bg-red-600 text-white'" class="px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-xl flex items-center gap-2">
                             <i :class="isSimple ? 'fa-solid fa-circle-check' : 'fa-solid fa-triangle-exclamation'"></i>
                             {{ isSimple ? 'Topology Verified' : 'Intersect Detected' }}
@@ -489,7 +489,7 @@ function submit() {
                                         </div>
                                         <div class="flex flex-col">
                                             <span class="text-xs font-black transition-colors" :class="form.assigned_staff.includes(person.id) ? 'text-geo-navy dark:text-geo-teal' : 'text-gray-500'">{{ person.name }}</span>
-                                            <span class="text-[8px] text-gray-400 uppercase tracking-tighter">Field Operative</span>
+                                            
                                         </div>
                                     </div>
                                     <i v-if="form.assigned_staff.includes(person.id)" class="fa-solid fa-circle-check text-geo-teal text-sm"></i>
@@ -500,7 +500,7 @@ function submit() {
                         <button @click="submit" :disabled="form.processing" 
                             class="w-full mt-8 bg-geo-navy dark:bg-geo-teal text-white dark:text-geo-navy py-5 rounded-2xl font-black shadow-xl hover:bg-geo-light-navy dark:hover:bg-geo-teal/80 active:scale-95 disabled:opacity-20 transition-all uppercase tracking-widest text-[10px] flex items-center justify-center gap-3">
                             <i class="fa-solid fa-satellite-dish"></i>
-                            Push Asset Reconfiguration
+                            Update Project Zone
                         </button>
                     </div>
                 </form>

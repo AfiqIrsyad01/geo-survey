@@ -30,9 +30,9 @@ Route::get('/', function () {
 Route::middleware(['auth', 'verified', 'no-cache'])->group(function () {
     Route::get('/dashboard', function () {
         $user = auth()->user();
-        
+
         $mostActiveProject = \App\Models\Survey::select('project_id', \Illuminate\Support\Facades\DB::raw('COUNT(*) as count'))
-            ->when($user->role === 'staff', function($query) use ($user) {
+            ->when($user->role === 'staff', function ($query) use ($user) {
                 return $query->where('user_id', $user->id);
             })
             ->groupBy('project_id')
@@ -42,8 +42,8 @@ Route::middleware(['auth', 'verified', 'no-cache'])->group(function () {
 
         $stats = [
             'active_projects' => \App\Models\Project::count(),
-            'total_surveys' => $user->role === 'staff' 
-                ? \App\Models\Survey::where('user_id', $user->id)->count() 
+            'total_surveys' => $user->role === 'staff'
+                ? \App\Models\Survey::where('user_id', $user->id)->count()
                 : \App\Models\Survey::count(),
             'pending_approvals' => \App\Models\Survey::where('status', 'pending')->count(),
             'staff_count' => \App\Models\User::where('role', 'staff')->count(),
@@ -54,12 +54,12 @@ Route::middleware(['auth', 'verified', 'no-cache'])->group(function () {
 
         // Chart Data: Monthly Trends (Last 6 Months)
         $monthlyTrends = \App\Models\Survey::select(
-                \Illuminate\Support\Facades\DB::raw('COUNT(*) as count'),
-                \Illuminate\Support\Facades\DB::raw("DATE_FORMAT(survey_date, '%b %Y') as month"),
-                \Illuminate\Support\Facades\DB::raw("MONTH(survey_date) as month_val")
-            )
+            \Illuminate\Support\Facades\DB::raw('COUNT(*) as count'),
+            \Illuminate\Support\Facades\DB::raw("DATE_FORMAT(survey_date, '%b %Y') as month"),
+            \Illuminate\Support\Facades\DB::raw("MONTH(survey_date) as month_val")
+        )
             ->where('survey_date', '>=', now()->subMonths(6))
-            ->when($user->role === 'staff', function($query) use ($user) {
+            ->when($user->role === 'staff', function ($query) use ($user) {
                 return $query->where('user_id', $user->id);
             })
             ->groupBy('month', 'month_val')
@@ -68,14 +68,14 @@ Route::middleware(['auth', 'verified', 'no-cache'])->group(function () {
 
         // Chart Data: Status Breakdown
         $statusBreakdown = \App\Models\Survey::select('status', \Illuminate\Support\Facades\DB::raw('COUNT(*) as count'))
-            ->when($user->role === 'staff', function($query) use ($user) {
+            ->when($user->role === 'staff', function ($query) use ($user) {
                 return $query->where('user_id', $user->id);
             })
             ->groupBy('status')
             ->get();
 
         $recentActivities = \App\Models\Survey::with(['project', 'user'])
-            ->when($user->role === 'staff', function($query) use ($user) {
+            ->when($user->role === 'staff', function ($query) use ($user) {
                 return $query->where('user_id', $user->id);
             })
             ->latest()
@@ -85,11 +85,13 @@ Route::middleware(['auth', 'verified', 'no-cache'])->group(function () {
         $projects_spatial = \App\Models\Project::select('id', 'name', 'description', 'deadline_date', 'cost')
             ->selectRaw('ST_AsGeoJSON(boundary) as boundary_json')
             ->withCount('surveys')
-            ->with(['surveys' => function($q) {
-                $q->latest()->with('user');
-            }])
+            ->with([
+                'surveys' => function ($q) {
+                    $q->latest()->with('user');
+                }
+            ])
             ->get()
-            ->map(function($project) {
+            ->map(function ($project) {
                 $latest = $project->surveys->first();
                 return [
                     'id' => $project->id,
@@ -141,21 +143,23 @@ Route::middleware(['auth', 'verified', 'no-cache'])->group(function () {
                     \Illuminate\Support\Facades\DB::raw('count(*) as count')
                 )->groupBy('month')->orderBy('month', 'desc')->take(12)->get(),
                 'top_personnel' => \App\Models\User::where('role', 'staff')
-                    ->withCount(['surveys' => function($query) use ($month, $year) {
-                        $query->whereMonth('survey_date', $month)->whereYear('survey_date', $year);
-                    }])
+                    ->withCount([
+                        'surveys' => function ($query) use ($month, $year) {
+                            $query->whereMonth('survey_date', $month)->whereYear('survey_date', $year);
+                        }
+                    ])
                     ->orderBy('surveys_count', 'desc')
                     ->take(5)
                     ->get(),
-                'selected_month' => (int)$month,
-                'selected_year' => (int)$year
+                'selected_month' => (int) $month,
+                'selected_year' => (int) $year
             ];
             return inertia('Admin/Reports', [
                 'stats' => $stats,
                 'projects' => \App\Models\Project::select('id', 'name', 'description', 'deadline_date', 'cost')
                     ->selectRaw('ST_AsGeoJSON(boundary) as boundary_json')
                     ->get()
-                    ->map(function($p) {
+                    ->map(function ($p) {
                         return [
                             'id' => $p->id,
                             'name' => $p->name,
@@ -189,4 +193,4 @@ Route::middleware(['auth', 'verified', 'no-cache'])->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';

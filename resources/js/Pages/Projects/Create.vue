@@ -454,15 +454,15 @@ function submit() {
                     
                     <!-- Left: Identity & Description -->
                     <div class="bg-[var(--geo-surface)] p-8 rounded-3xl shadow-sm border border-[var(--geo-border)] space-y-6 transition-colors duration-500">
-                        <h4 class="text-[10px] font-black text-geo-navy dark:text-white uppercase tracking-[0.2em] mb-4 border-b border-gray-50 dark:border-white/5 pb-4 transition-colors">Zone Configuration</h4>
+                        <h4 class="text-[10px] font-black text-geo-navy dark:text-white uppercase tracking-[0.2em] mb-4 border-b border-gray-50 dark:border-white/5 pb-4 transition-colors">Zone Details</h4>
                         <div>
-                            <label class="block text-[9px] font-black text-geo-slate dark:text-gray-400 uppercase tracking-widest mb-2 ml-1 transition-colors">Mission Identifier</label>
+                            <label class="block text-[9px] font-black text-geo-slate dark:text-gray-400 uppercase tracking-widest mb-2 ml-1 transition-colors">Project Title</label>
                             <input v-model="form.name" type="text" class="w-full rounded-2xl border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-white/5 py-4 px-6 text-sm font-bold text-geo-navy dark:text-white focus:bg-white dark:focus:bg-geo-navy focus:ring-geo-teal transition-all" placeholder="e.g. Sector-A Regional Survey" required />
                         </div>
 
                         <div>
                             <label class="block text-[9px] font-black text-geo-slate dark:text-gray-400 uppercase tracking-widest mb-2 ml-1 transition-colors">Operational Scope</label>
-                            <textarea v-model="form.description" class="w-full rounded-2xl border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-white/5 py-4 px-6 text-sm font-medium text-geo-navy dark:text-white focus:bg-white dark:focus:bg-geo-navy focus:ring-geo-teal transition-all" rows="4" placeholder="Detail the strategic objectives..."></textarea>
+                            <textarea v-model="form.description" class="w-full rounded-2xl border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-white/5 py-4 px-6 text-sm font-medium text-geo-navy dark:text-white focus:bg-white dark:focus:bg-geo-navy focus:ring-geo-teal transition-all" rows="4" placeholder="Describe the strategic objectives..."></textarea>
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">
@@ -480,7 +480,7 @@ function submit() {
                     <!-- Middle: Personnel Deployment -->
                     <div class="bg-[var(--geo-surface)] p-8 rounded-3xl shadow-sm border border-[var(--geo-border)] space-y-6 transition-colors duration-500">
                         <div class="flex items-center justify-between mb-4 border-b border-gray-50 dark:border-white/5 pb-4 transition-colors text-geo-navy dark:text-white">
-                            <h4 class="text-[10px] font-black uppercase tracking-[0.2em]">Personnel Deployment</h4>
+                            <h4 class="text-[10px] font-black uppercase tracking-[0.2em]">Staff Assignment</h4>
                             <span class="text-[9px] font-black bg-geo-navy dark:bg-geo-teal text-geo-teal dark:text-geo-navy px-2 py-0.5 rounded italic transition-colors">{{ form.assigned_staff.length }} Units</span>
                         </div>
                         
@@ -497,7 +497,7 @@ function submit() {
                                     </div>
                                     <div class="flex flex-col">
                                         <span class="text-xs font-black transition-colors" :class="form.assigned_staff.includes(person.id) ? 'text-geo-navy dark:text-geo-teal' : 'text-gray-500'">{{ person.name }}</span>
-                                        <span class="text-[8px] text-gray-400 uppercase tracking-tighter">Field Operative</span>
+                                        
                                     </div>
                                 </div>
                                 <i v-if="form.assigned_staff.includes(person.id)" class="fa-solid fa-circle-check text-geo-teal text-sm"></i>
@@ -508,7 +508,7 @@ function submit() {
                     <!-- Right: Intel Sync & Finalize -->
                     <div class="bg-geo-navy p-8 rounded-3xl shadow-2xl text-white flex flex-col justify-between">
                         <div class="space-y-6">
-                            <h4 class="text-[10px] font-black text-geo-teal uppercase tracking-[0.3em] mb-4 border-b border-white/10 pb-4">Mission Intelligence</h4>
+                            <h4 class="text-[10px] font-black text-geo-teal uppercase tracking-[0.3em] mb-4 border-b border-white/10 pb-4">Polygon Details</h4>
                             
                             <div v-if="boundary" class="space-y-4 animate-fade-in">
                                 <div class="grid grid-cols-2 gap-4">
@@ -532,10 +532,10 @@ function submit() {
                             
                             <!-- External Import -->
                             <div v-else class="space-y-4">
-                                <p class="text-[10px] text-gray-400 italic">No spatial data detected. Map acquisition active or import file...</p>
+                                <p class="text-[10px] text-gray-400 italic">No spatial data detected. Place the polygon or import file...</p>
                                 <label class="w-full flex items-center justify-center gap-3 py-4 bg-white/5 border-2 border-dashed border-white/10 rounded-2xl cursor-pointer hover:bg-white/10 transition-all">
                                     <i class="fa-solid fa-file-import text-geo-teal"></i>
-                                    <span class="text-[9px] font-black uppercase tracking-widest text-gray-300">Digest GeoJSON</span>
+                                    <span class="text-[9px] font-black uppercase tracking-widest text-gray-300">Upload GeoJSON</span>
                                     <input type="file" @change="handleFileUpload" accept=".json,.geojson" class="hidden" />
                                 </label>
                             </div>
@@ -544,7 +544,7 @@ function submit() {
                         <button @click="submit" :disabled="form.processing" 
                             class="w-full mt-8 bg-gradient-to-r from-geo-teal to-teal-400 text-geo-navy py-5 rounded-2xl font-black shadow-xl hover:brightness-110 active:scale-95 disabled:opacity-20 transition-all uppercase tracking-widest text-[10px] flex items-center justify-center gap-3">
                             <i class="fa-solid fa-satellite"></i>
-                            Initialize Project Zone
+                            Create Project Zone
                         </button>
                     </div>
                 </form>

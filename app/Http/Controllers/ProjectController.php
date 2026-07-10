@@ -26,7 +26,7 @@ class ProjectController extends Controller
         $staff = \App\Models\User::where('role', 'staff')
             ->where('is_active', true)
             ->get()
-            ->map(function($user) {
+            ->map(function ($user) {
                 // Get most recent survey location for this user
                 $latestLocation = \App\Models\Survey::where('user_id', $user->id)
                     ->join('survey_details', 'surveys.id', '=', 'survey_details.survey_id')
@@ -60,7 +60,7 @@ class ProjectController extends Controller
 
         return DB::transaction(function () use ($request) {
             $description = $request->description;
-            
+
             // Level 3: persist assignments within the existing schema (Description Prefix)
             if ($request->assigned_staff && count($request->assigned_staff) > 0) {
                 $staffNames = \App\Models\User::whereIn('id', $request->assigned_staff)->pluck('name')->toArray();
@@ -79,7 +79,7 @@ class ProjectController extends Controller
             if ($request->boundary) {
                 // Ensure it's a valid GeoJSON string
                 $boundary = $request->boundary;
-                
+
                 // Level 3: Server-side Geometry Integration
                 // Directly convert GeoJSON to MySQL Geometry
                 DB::statement("UPDATE projects SET boundary = ST_GeomFromGeoJSON(?) WHERE id = ?", [
@@ -101,7 +101,7 @@ class ProjectController extends Controller
         $staff = \App\Models\User::where('role', 'staff')
             ->where('is_active', true)
             ->get()
-            ->map(function($user) {
+            ->map(function ($user) {
                 return [
                     'id' => $user->id,
                     'name' => $user->name,
@@ -128,14 +128,14 @@ class ProjectController extends Controller
 
         DB::transaction(function () use ($request, $project) {
             $description = $request->description;
-            
+
             // Mirroring the assignment logic from store() for consistency
             if ($request->assigned_staff && count($request->assigned_staff) > 0) {
                 // Remove existing assignments if any were already in the description to prevent duplication
                 $cleanDescription = preg_replace('/UNIT ASSIGNMENT: \[.*?\]\n\n/', '', $description ?? '');
-                
+
                 $staffNames = \App\Models\User::whereIn('id', $request->assigned_staff)->pluck('name')->toArray();
-                $description = "UNIT ASSIGNMENT: [" . implode(' | ', $staffNames) . "]\n\n" . ($cleanDescription ?: 'Operational goals pending.');
+                $description = "Assigned Staff : [" . implode(' | ', $staffNames) . "]\n\n" . ($cleanDescription ?: 'Operational goals pending.');
             }
 
             $project->update([

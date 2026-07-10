@@ -110,17 +110,23 @@ class SurveyController extends Controller
                     $path = $imageFile->store('surveys/images', 'public');
                     $fullPath = storage_path('app/public/' . $path);
 
-                    // Watermark (Enhanced Branding)
+                    // Watermark (Enhanced Branding) & Image Optimization
                     $image = $manager->read($fullPath);
+
+                    // CRITICAL SPEED FIX: Scale down huge mobile photos to a max width of 1200px.
+                    // This massively slashes memory usage, makes text-rendering instant, and fast saves.
+                    $image->scaleDown(width: 1200);
+
                     $text = "GPS: {$request->lat}, {$request->lng} | " . now()->format('Y-m-d H:i:s') . " | GeoSurvey";
 
                     $image->text($text, 20, $image->height() - 40, function ($font) {
-                        $font->size(24);
+                        $font->size(36); // Standard size works perfectly on a 1200px image
                         $font->color('#ffffff');
                         $font->stroke('#000000', 2);
                     });
 
-                    $image->save($fullPath);
+                    // Save with slightly optimized quality to guarantee fast I/O
+                    $image->save($fullPath, quality: 80);
 
                     // Integrity Cross-Check: Verified if Photo is WITHIN the Project Polygon
                     $isVerified = false;
